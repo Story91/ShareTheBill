@@ -12,6 +12,7 @@ export function NewCameraCapture({ onCapture, onClose }: NewCameraCaptureProps) 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -26,6 +27,7 @@ export function NewCameraCapture({ onCapture, onClose }: NewCameraCaptureProps) 
   const startCamera = async () => {
     setIsLoading(true);
     setError("");
+    setVideoReady(false);
     
     try {
       console.log("Requesting camera access...");
@@ -42,7 +44,34 @@ export function NewCameraCapture({ onCapture, onClose }: NewCameraCaptureProps) 
       setStream(mediaStream);
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+        const video = videoRef.current;
+        video.srcObject = mediaStream;
+        
+        // Force video to play immediately when stream is ready
+        video.onloadedmetadata = async () => {
+          console.log("Video metadata loaded, starting playback");
+          try {
+            await video.play();
+            setVideoReady(true);
+            console.log("Video is now playing");
+          } catch (playError) {
+            console.error("Play failed:", playError);
+          }
+        };
+        
+        // Fallback: try to play after a short delay even without metadata
+        setTimeout(async () => {
+          if (video.paused) {
+            console.log("Fallback: attempting to play video");
+            try {
+              await video.play();
+              setVideoReady(true);
+            } catch (err) {
+              console.error("Fallback play failed:", err);
+            }
+          }
+        }, 500);
+        
         console.log("Video source set");
       }
       
@@ -125,9 +154,14 @@ export function NewCameraCapture({ onCapture, onClose }: NewCameraCaptureProps) 
 
         {/* Content */}
         <div className="space-y-4">
-          {isLoading && (
+          {(isLoading || (stream && !videoReady)) && (
             <div className="text-center py-8">
-              <p className="text-gray-600">Starting camera...</p>
+              <div className="animate-pulse">
+                <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-600">
+                  {isLoading ? "Starting camera..." : "Initializing video..."}
+                </p>
+              </div>
             </div>
           )}
 
@@ -144,7 +178,7 @@ export function NewCameraCapture({ onCapture, onClose }: NewCameraCaptureProps) 
             </div>
           )}
 
-          {stream && !isLoading && !error && (
+          {stream && videoReady && !error && (
             <>
               {/* Video Preview */}
               <div className="relative bg-black rounded-lg overflow-hidden">
