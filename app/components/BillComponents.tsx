@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Button, Icon } from "./DemoComponents";
-import { CameraCapture } from "./CameraCapture";
+import { NewCameraCapture } from "./NewCameraCapture";
 import { OCRResult, UploadedReceipt, FarcasterFriend, SplitConfiguration } from "@/lib/types";
 
 // BillUploader Component
@@ -20,17 +20,15 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
 
   // Check if camera is supported
   useEffect(() => {
-    const checkCameraSupport = async () => {
+    const checkCameraSupport = () => {
       try {
-        // Check if getUserMedia is supported and can be used
-        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-          // Try to get available devices to verify camera access
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const hasVideoInput = devices.some(device => device.kind === 'videoinput');
-          setCameraSupported(hasVideoInput);
-        } else {
-          setCameraSupported(false);
-        }
+        // Simple check if getUserMedia is available
+        const isSupported = !!(
+          navigator.mediaDevices &&
+          navigator.mediaDevices.getUserMedia &&
+          typeof navigator.mediaDevices.getUserMedia === 'function'
+        );
+        setCameraSupported(isSupported);
       } catch (error) {
         console.log('Camera not supported:', error);
         setCameraSupported(false);
@@ -143,7 +141,7 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
   return (
     <div className="space-y-4">
       {showCamera && (
-        <CameraCapture
+        <NewCameraCapture
           onCapture={handleCameraCapture}
           onClose={() => setShowCamera(false)}
         />

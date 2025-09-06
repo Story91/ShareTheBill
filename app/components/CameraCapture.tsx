@@ -24,9 +24,17 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
         }
       });
       
+      console.log('Camera stream created:', mediaStream);
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        // Ensure video plays
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, attempting to play');
+          videoRef.current?.play().catch(err => {
+            console.error('Video play failed:', err);
+          });
+        };
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -112,7 +120,9 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
                   ref={videoRef}
                   autoPlay
                   playsInline
-                  className="w-full h-64 object-cover rounded-lg"
+                  muted
+                  className="w-full h-64 object-cover rounded-lg bg-gray-200"
+                  style={{ minHeight: '256px' }}
                 />
                 <canvas
                   ref={canvasRef}
