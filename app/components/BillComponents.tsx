@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Button, Icon } from "./DemoComponents";
-import { CameraCapture } from "./CameraCapture";
+import { SimpleCamera } from "./SimpleCamera";
 import {
   OCRResult,
   UploadedReceipt,
@@ -166,7 +166,7 @@ export function BillUploader({
   return (
     <div className="space-y-4">
       {showCamera && (
-        <CameraCapture
+        <SimpleCamera
           onCapture={handleCameraCapture}
           onClose={() => setShowCamera(false)}
         />
