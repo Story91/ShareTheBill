@@ -71,10 +71,20 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('/api/ocr', {
+      // Try real OCR first, fallback to simple OCR
+      let response = await fetch('/api/ocr-real', {
         method: 'POST',
         body: formData
       });
+
+      // If real OCR fails, try simple OCR
+      if (!response.ok) {
+        console.log('Real OCR failed, trying simple OCR...');
+        response = await fetch('/api/ocr-simple', {
+          method: 'POST',
+          body: formData
+        });
+      }
 
       if (response.ok) {
         const ocrResult: OCRResult = await response.json();

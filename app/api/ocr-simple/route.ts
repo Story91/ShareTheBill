@@ -22,8 +22,11 @@ export async function POST(request: NextRequest) {
     // Generate mock amounts based on file name or random
     const mockAmounts = generateMockAmounts(file.name);
     
+    // Generate realistic receipt text
+    const receiptText = generateReceiptText(mockAmounts, file.name);
+    
     const result: OCRResult = {
-      extractedText: `Receipt processed: ${file.name}`,
+      extractedText: receiptText,
       detectedAmounts: mockAmounts,
       suggestedAmount: mockAmounts.length > 0 ? Math.max(...mockAmounts) : undefined,
       confidence: 0.85,
@@ -72,6 +75,44 @@ function generateMockAmounts(fileName: string): number[] {
   
   const randomIndex = Math.floor(Math.random() * possibleAmounts.length);
   return possibleAmounts[randomIndex];
+}
+
+function generateReceiptText(amounts: number[], fileName: string): string {
+  const restaurantNames = [
+    "Mario's Pizza", "Green Café", "City Bistro", "The Local Diner", "Fresh Market"
+  ];
+  const items = [
+    "Margherita Pizza", "Caesar Salad", "Grilled Chicken", "Coffee", "Pasta", 
+    "Burger", "French Fries", "Soda", "Dessert", "Soup"
+  ];
+  
+  const restaurant = restaurantNames[Math.floor(Math.random() * restaurantNames.length)];
+  let receipt = `${restaurant.toUpperCase()}\n`;
+  receipt += `Date: ${new Date().toLocaleDateString()}\n`;
+  receipt += `Time: ${new Date().toLocaleTimeString()}\n\n`;
+  
+  // Add items with amounts
+  amounts.slice(0, -1).forEach((amount, index) => {
+    const item = items[index % items.length];
+    receipt += `${item}: $${amount.toFixed(2)}\n`;
+  });
+  
+  if (amounts.length > 1) {
+    const subtotal = amounts.slice(0, -1).reduce((sum, amt) => sum + amt, 0);
+    const total = amounts[amounts.length - 1];
+    const tax = total - subtotal;
+    
+    receipt += `\nSubtotal: $${subtotal.toFixed(2)}\n`;
+    if (tax > 0) {
+      receipt += `Tax: $${tax.toFixed(2)}\n`;
+    }
+    receipt += `TOTAL: $${total.toFixed(2)}\n`;
+  } else {
+    receipt += `\nTOTAL: $${amounts[0].toFixed(2)}\n`;
+  }
+  
+  receipt += `\nThank you for your visit!`;
+  return receipt;
 }
 
 export async function GET() {
