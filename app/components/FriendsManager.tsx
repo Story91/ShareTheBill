@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button, Icon } from "./DemoComponents";
 import { FarcasterFriend } from "@/lib/types";
 
@@ -15,11 +15,26 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
   const [managedFriends, setManagedFriends] = useState<FarcasterFriend[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
+  // Load existing friends from database on component mount
+  const loadExistingFriends = useCallback(async () => {
+    if (!userFid) return;
+
+    try {
+      const response = await fetch(`/api/friends?fid=${userFid}`);
+      if (response.ok) {
+        const data = await response.json();
+        setManagedFriends(data.friends);
+      }
+    } catch (error) {
+      console.error("Error loading existing friends:", error);
+    }
+  }, [userFid]);
+
   const loadFriends = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/friends?fid=${userFid}&search=${searchQuery}&limit=50`,
+        `/api/friends?fid=${userFid}&action=search&search=${searchQuery}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -34,20 +49,75 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
   }, [userFid, searchQuery]);
 
   const addFriend = useCallback(
-    (friend: FarcasterFriend) => {
+    async (friend: FarcasterFriend) => {
+      if (!userFid) {
+        console.error("User FID is undefined");
+        return;
+      }
+
       if (!managedFriends.some((f) => f.fid === friend.fid)) {
-        setManagedFriends((prev) => [...prev, friend]);
+        try {
+          // Save to database
+          const response = await fetch("/api/friends", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "add",
+              friendFid: friend.fid,
+              requestorFid: userFid,
+            }),
+          });
+
+          if (response.ok) {
+            setManagedFriends((prev) => [...prev, friend]);
+          } else {
+            const errorText = await response.text();
+            console.error(
+              "Failed to add friend to database:",
+              response.status,
+              errorText,
+            );
+          }
+        } catch (error) {
+          console.error("Error adding friend:", error);
+        }
       }
       setShowSearchResults(false);
       setSearchQuery("");
       setFriends([]);
     },
-    [managedFriends],
+    [managedFriends, userFid],
   );
 
-  const removeFriend = useCallback((fid: number) => {
-    setManagedFriends((prev) => prev.filter((f) => f.fid !== fid));
-  }, []);
+  const removeFriend = useCallback(
+    async (fid: number) => {
+      try {
+        // Remove from database
+        const response = await fetch("/api/friends", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "remove",
+            friendFid: fid,
+            requestorFid: userFid,
+          }),
+        });
+
+        if (response.ok) {
+          setManagedFriends((prev) => prev.filter((f) => f.fid !== fid));
+        } else {
+          console.error("Failed to remove friend from database");
+        }
+      } catch (error) {
+        console.error("Error removing friend:", error);
+      }
+    },
+    [userFid],
+  );
 
   const handleSearch = useCallback(() => {
     if (searchQuery.trim()) {
@@ -63,6 +133,11 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
     },
     [handleSearch],
   );
+
+  // Load existing friends on component mount
+  useEffect(() => {
+    loadExistingFriends();
+  }, [loadExistingFriends]);
 
   return (
     <div className="space-y-6">
@@ -122,7 +197,7 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
         <div className="flex items-center space-x-2">
           <input
             type="text"
-            placeholder="Search for friends by username or display name..."
+            placeholder="Enter exact username (e.g., @username or username)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -134,14 +209,14 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
             disabled={loading || !searchQuery.trim()}
             icon={<Icon name="plus" size="sm" />}
           >
-            Search
+            Find User
           </Button>
         </div>
 
         {/* Search Results */}
         {showSearchResults && (
           <div className="bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg p-4">
-            <h3 className="font-medium mb-3">Search Results</h3>
+            <h3 className="font-medium mb-3">User Found</h3>
 
             {loading && (
               <div className="flex items-center justify-center py-8">
@@ -151,7 +226,7 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
 
             {!loading && friends.length === 0 && (
               <p className="text-center text-[var(--app-foreground-muted)] py-4">
-                No friends found for &quot;{searchQuery}&quot;
+                No user found with username &quot;{searchQuery}&quot;
               </p>
             )}
 
@@ -221,7 +296,7 @@ export function FriendsManager({ userFid = 12345 }: FriendsManagerProps) {
               No friends added yet
             </h3>
             <p className="text-[var(--app-foreground-muted)] text-sm mb-4">
-              Search and add friends to make bill splitting easier
+              Find friends by their exact username to make bill splitting easier
             </p>
           </div>
         ) : (

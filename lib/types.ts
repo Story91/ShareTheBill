@@ -8,7 +8,7 @@ export interface BillParticipant {
   amountOwed: number;
   paidAt?: string;
   paymentHash?: string;
-  status: 'pending' | 'paid' | 'failed';
+  status: "pending" | "paid" | "failed";
 }
 
 export interface Bill {
@@ -19,14 +19,14 @@ export interface Bill {
   creatorFid: number;
   creatorUsername?: string;
   participants: BillParticipant[];
-  status: 'draft' | 'pending' | 'collecting' | 'completed' | 'cancelled';
+  status: "draft" | "pending" | "collecting" | "completed" | "cancelled";
   createdAt: string;
   updatedAt: string;
   dueDate?: string;
   receiptImage?: string;
   receiptImageUrl?: string;
-  currency: 'USDC' | 'ETH';
-  splitType: 'equal' | 'custom' | 'percentage';
+  currency: "USDC" | "ETH";
+  splitType: "equal" | "custom" | "percentage";
   tags?: string[];
 }
 
@@ -42,7 +42,7 @@ export interface PaymentRequest {
   billId: string;
   participantFid: number;
   amount: number;
-  currency: 'USDC' | 'ETH';
+  currency: "USDC" | "ETH";
   recipientAddress: string;
 }
 
@@ -65,7 +65,12 @@ export interface FarcasterFriend {
 }
 
 export interface NotificationPayload {
-  type: 'bill_created' | 'payment_request' | 'payment_received' | 'bill_completed' | 'payment_reminder';
+  type:
+    | "bill_created"
+    | "payment_request"
+    | "payment_received"
+    | "bill_completed"
+    | "payment_reminder";
   billId: string;
   title: string;
   body: string;
@@ -78,14 +83,14 @@ export interface BillSummary {
   title: string;
   totalAmount: number;
   yourShare: number;
-  status: Bill['status'];
+  status: Bill["status"];
   createdAt: string;
   participantCount: number;
   isCreator: boolean;
 }
 
 export interface SplitConfiguration {
-  type: 'equal' | 'custom' | 'percentage';
+  type: "equal" | "custom" | "percentage";
   participants: {
     fid: number;
     amount?: number;
@@ -100,4 +105,25 @@ export interface UploadedReceipt {
   isProcessing: boolean;
 }
 
+export interface UserProfile {
+  fid: number;
+  username: string;
+  displayName: string;
+  pfpUrl?: string;
+  friends: number[]; // Array of friend FIDs
+  createdAt: string;
+  updatedAt: string;
+}
 
+export interface NeynarUser {
+  fid: number;
+  username: string;
+  display_name: string;
+  pfp_url?: string;
+  follower_count?: number;
+  following_count?: number;
+  verified_addresses?: {
+    eth_addresses: string[];
+    sol_addresses: string[];
+  };
+}
