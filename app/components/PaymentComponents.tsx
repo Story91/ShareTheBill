@@ -25,75 +25,91 @@ interface PaymentFlowProps {
   onPaymentComplete: (result: PaymentResult) => void;
 }
 
-export function PaymentFlow({ bill, participantFid, onPaymentComplete }: PaymentFlowProps) {
+export function PaymentFlow({
+  bill,
+  participantFid,
+  onPaymentComplete,
+}: PaymentFlowProps) {
   const { address } = useAccount();
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
-  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<
+    "idle" | "processing" | "completed" | "failed"
+  >("idle");
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(
+    null,
+  );
 
   // All hooks must be at the top
-  const handlePaymentSuccess = useCallback(async (response: TransactionResponse) => {
-    const transactionHash = response.transactionReceipts[0].transactionHash;
-    
-    setPaymentStatus('processing');
-    
-    try {
-      // Record payment in backend
-      const paymentResponse = await fetch(`/api/bills/${bill.id}/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          participantFid,
-          amount: bill.participants.find(p => p.fid === participantFid)?.amountOwed || 0,
-          currency: bill.currency,
-          transactionHash,
-          recipientAddress: address
-        })
-      });
+  const handlePaymentSuccess = useCallback(
+    async (response: TransactionResponse) => {
+      const transactionHash = response.transactionReceipts[0].transactionHash;
 
-      if (paymentResponse.ok) {
+      setPaymentStatus("processing");
+
+      try {
+        // Record payment in backend
+        const paymentResponse = await fetch(`/api/bills/${bill.id}/pay`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            participantFid,
+            amount:
+              bill.participants.find((p) => p.fid === participantFid)
+                ?.amountOwed || 0,
+            currency: bill.currency,
+            transactionHash,
+            recipientAddress: address,
+          }),
+        });
+
+        if (paymentResponse.ok) {
+          const result: PaymentResult = {
+            success: true,
+            transactionHash,
+            timestamp: new Date().toISOString(),
+          };
+
+          setPaymentResult(result);
+          setPaymentStatus("completed");
+          onPaymentComplete(result);
+        } else {
+          throw new Error("Failed to record payment");
+        }
+      } catch (error) {
+        console.error("Payment recording failed:", error);
         const result: PaymentResult = {
-          success: true,
-          transactionHash,
-          timestamp: new Date().toISOString()
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+          timestamp: new Date().toISOString(),
         };
-        
+
         setPaymentResult(result);
-        setPaymentStatus('completed');
+        setPaymentStatus("failed");
         onPaymentComplete(result);
-      } else {
-        throw new Error('Failed to record payment');
       }
-    } catch (error) {
-      console.error('Payment recording failed:', error);
+    },
+    [bill.id, participantFid, bill.currency, address, onPaymentComplete],
+  );
+
+  const handlePaymentError = useCallback(
+    (error: TransactionError) => {
+      console.error("Payment failed:", error);
+      setPaymentStatus("failed");
       const result: PaymentResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
+        error: error.message || "Transaction failed",
+        timestamp: new Date().toISOString(),
       };
-      
       setPaymentResult(result);
-      setPaymentStatus('failed');
       onPaymentComplete(result);
-    }
-  }, [bill.id, participantFid, bill.currency, address, onPaymentComplete]);
-
-  const handlePaymentError = useCallback((error: TransactionError) => {
-    console.error("Payment failed:", error);
-    setPaymentStatus('failed');
-    const result: PaymentResult = {
-      success: false,
-      error: error.message || 'Transaction failed',
-      timestamp: new Date().toISOString()
-    };
-    setPaymentResult(result);
-    onPaymentComplete(result);
-  }, [onPaymentComplete]);
+    },
+    [onPaymentComplete],
+  );
 
   // All conditional logic after hooks
-  const participant = bill.participants.find(p => p.fid === participantFid);
-  
+  const participant = bill.participants.find((p) => p.fid === participantFid);
+
   if (!participant) {
     return (
       <div className="text-center p-4">
@@ -102,13 +118,14 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
     );
   }
 
-  if (participant.status === 'paid') {
+  if (participant.status === "paid") {
     return (
       <div className="text-center p-4 bg-green-50 rounded-lg">
         <Icon name="check" className="text-green-500 mx-auto mb-2" size="lg" />
         <p className="text-green-700 font-medium">Payment Completed!</p>
         <p className="text-green-600 text-sm">
-          Paid {participant.amountOwed} {bill.currency} on {new Date(participant.paidAt!).toLocaleDateString()}
+          Paid {participant.amountOwed} {bill.currency} on{" "}
+          {new Date(participant.paidAt!).toLocaleDateString()}
         </p>
         {participant.paymentHash && (
           <p className="text-green-600 text-xs mt-1">
@@ -120,13 +137,15 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
   }
 
   // Create transaction call for USDC payment
-  const calls = address ? [
-    {
-      to: address, // In production, this would be the bill creator's address or a smart contract
-      data: "0x" as `0x${string}`,
-      value: BigInt(0), // USDC transfers don't use ETH value
-    },
-  ] : [];
+  const calls = address
+    ? [
+        {
+          to: address, // In production, this would be the bill creator's address or a smart contract
+          data: "0x" as `0x${string}`,
+          value: BigInt(0), // USDC transfers don't use ETH value
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-4">
@@ -139,7 +158,9 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
           </div>
           <div className="flex justify-between">
             <span>Your share:</span>
-            <span className="font-medium">{participant.amountOwed} {bill.currency}</span>
+            <span className="font-medium">
+              {participant.amountOwed} {bill.currency}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Payment method:</span>
@@ -155,12 +176,13 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
             onSuccess={handlePaymentSuccess}
             onError={handlePaymentError}
           >
-            <TransactionButton 
+            <TransactionButton
               className="w-full bg-[var(--app-accent)] hover:bg-[var(--app-accent-hover)] text-white font-medium py-3 px-6 rounded-lg"
-              disabled={paymentStatus === 'processing'}
-              text={paymentStatus === 'processing' 
-                ? 'Processing Payment...' 
-                : `Pay ${participant.amountOwed} ${bill.currency}`
+              disabled={paymentStatus === "processing"}
+              text={
+                paymentStatus === "processing"
+                  ? "Processing Payment..."
+                  : `Pay ${participant.amountOwed} ${bill.currency}`
               }
             />
             <TransactionStatus>
@@ -176,11 +198,13 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
         </div>
       ) : (
         <div className="text-center p-4 bg-yellow-50 rounded-lg">
-          <p className="text-yellow-700">Please connect your wallet to make a payment</p>
+          <p className="text-yellow-700">
+            Please connect your wallet to make a payment
+          </p>
         </div>
       )}
 
-      {paymentResult && paymentStatus === 'failed' && (
+      {paymentResult && paymentStatus === "failed" && (
         <div className="bg-red-50 p-4 rounded-lg">
           <p className="text-red-700 font-medium">Payment Failed</p>
           <p className="text-red-600 text-sm">{paymentResult.error}</p>
@@ -188,7 +212,7 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
             variant="outline"
             size="sm"
             onClick={() => {
-              setPaymentStatus('idle');
+              setPaymentStatus("idle");
               setPaymentResult(null);
             }}
             className="mt-2"
@@ -220,20 +244,23 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
         setBillData(data.bill);
       }
     } catch (error) {
-      console.error('Failed to refresh bill status:', error);
+      console.error("Failed to refresh bill status:", error);
     } finally {
       setRefreshing(false);
     }
   }, [bill.id]);
 
-  const totalPaid = billData.participants.reduce((sum, p) => 
-    p.status === 'paid' ? sum + p.amountOwed : sum, 0
+  const totalPaid = billData.participants.reduce(
+    (sum, p) => (p.status === "paid" ? sum + p.amountOwed : sum),
+    0,
   );
-  
+
   const totalPending = billData.totalAmount - totalPaid;
   const completionPercentage = (totalPaid / billData.totalAmount) * 100;
 
-  const currentUserParticipant = billData.participants.find(p => p.fid === currentUserFid);
+  const currentUserParticipant = billData.participants.find(
+    (p) => p.fid === currentUserFid,
+  );
   const isCreator = billData.creatorFid === currentUserFid;
 
   return (
@@ -247,12 +274,14 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
           disabled={refreshing}
           icon={<Icon name="arrow-right" size="sm" />}
         >
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          {refreshing ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 
       {billData.description && (
-        <p className="text-[var(--app-foreground-muted)]">{billData.description}</p>
+        <p className="text-[var(--app-foreground-muted)]">
+          {billData.description}
+        </p>
       )}
 
       {/* Progress Bar */}
@@ -272,22 +301,28 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-[var(--app-card-bg)] p-4 rounded-lg text-center">
-          <p className="text-2xl font-bold text-green-600">{totalPaid.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-green-600">
+            {totalPaid.toFixed(2)}
+          </p>
           <p className="text-sm text-[var(--app-foreground-muted)]">Paid</p>
         </div>
         <div className="bg-[var(--app-card-bg)] p-4 rounded-lg text-center">
-          <p className="text-2xl font-bold text-orange-600">{totalPending.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-orange-600">
+            {totalPending.toFixed(2)}
+          </p>
           <p className="text-sm text-[var(--app-foreground-muted)]">Pending</p>
         </div>
       </div>
 
       {/* Current User Status */}
       {currentUserParticipant && (
-        <div className={`p-4 rounded-lg border-2 ${
-          currentUserParticipant.status === 'paid'
-            ? 'border-green-200 bg-green-50'
-            : 'border-orange-200 bg-orange-50'
-        }`}>
+        <div
+          className={`p-4 rounded-lg border-2 ${
+            currentUserParticipant.status === "paid"
+              ? "border-green-200 bg-green-50"
+              : "border-orange-200 bg-orange-50"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Your Status</p>
@@ -296,7 +331,7 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              {currentUserParticipant.status === 'paid' ? (
+              {currentUserParticipant.status === "paid" ? (
                 <>
                   <Icon name="check" className="text-green-600" />
                   <span className="text-green-600 font-medium">Paid</span>
@@ -313,35 +348,39 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
 
       {/* Participants List */}
       <div className="space-y-3">
-        <h3 className="font-medium">Participants ({billData.participants.length})</h3>
+        <h3 className="font-medium">
+          Participants ({billData.participants.length})
+        </h3>
         {billData.participants.map((participant, index) => (
           <div
-            key={`${participant.fid}-${participant.username || 'unknown'}-${index}`}
+            key={`${participant.fid}-${participant.username || "unknown"}-${index}`}
             className="flex items-center space-x-3 p-3 bg-[var(--app-card-bg)] rounded-lg"
           >
             <img
-              src={participant.pfpUrl || '/placeholder-avatar.png'}
+              src={participant.pfpUrl || "/placeholder-avatar.png"}
               alt={participant.displayName || `User ${participant.fid}`}
               className="w-10 h-10 rounded-full"
             />
             <div className="flex-1">
               <p className="font-medium">
                 {participant.displayName || `User ${participant.fid}`}
-                {participant.fid === currentUserFid && ' (You)'}
-                {participant.fid === billData.creatorFid && ' (Creator)'}
+                {participant.fid === currentUserFid && " (You)"}
+                {participant.fid === billData.creatorFid && " (Creator)"}
               </p>
               <p className="text-sm text-[var(--app-foreground-muted)]">
                 {participant.amountOwed} {billData.currency}
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              {participant.status === 'paid' ? (
+              {participant.status === "paid" ? (
                 <div className="flex items-center space-x-1 text-green-600">
                   <Icon name="check" size="sm" />
                   <span className="text-sm font-medium">Paid</span>
                 </div>
               ) : (
-                <span className="text-orange-600 text-sm font-medium">Pending</span>
+                <span className="text-orange-600 text-sm font-medium">
+                  Pending
+                </span>
               )}
             </div>
           </div>
@@ -349,17 +388,18 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
       </div>
 
       {/* Bill Actions */}
-      {isCreator && billData.status !== 'completed' && (
+      {isCreator && billData.status !== "completed" && (
         <div className="pt-4 border-t border-[var(--app-card-border)]">
           <p className="text-sm text-[var(--app-foreground-muted)] mb-2">
-            As the bill creator, you can send reminders to participants who haven't paid yet.
+            As the bill creator, you can send reminders to participants who
+            haven&apos;t paid yet.
           </p>
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
               // TODO: Implement reminder functionality
-              alert('Reminder feature coming soon!');
+              alert("Reminder feature coming soon!");
             }}
           >
             Send Reminders
@@ -378,4 +418,3 @@ export function BillStatus({ bill, currentUserFid }: BillStatusProps) {
     </div>
   );
 }
-

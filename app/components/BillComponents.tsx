@@ -3,7 +3,12 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Button, Icon } from "./DemoComponents";
 import { CameraCapture } from "./CameraCapture";
-import { OCRResult, UploadedReceipt, FarcasterFriend, SplitConfiguration } from "@/lib/types";
+import {
+  OCRResult,
+  UploadedReceipt,
+  FarcasterFriend,
+  SplitConfiguration,
+} from "@/lib/types";
 
 // BillUploader Component
 interface BillUploaderProps {
@@ -11,8 +16,12 @@ interface BillUploaderProps {
   isProcessing?: boolean;
 }
 
-export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUploaderProps) {
-  const [uploadedReceipt, setUploadedReceipt] = useState<UploadedReceipt | null>(null);
+export function BillUploader({
+  onReceiptUploaded,
+  isProcessing = false,
+}: BillUploaderProps) {
+  const [uploadedReceipt, setUploadedReceipt] =
+    useState<UploadedReceipt | null>(null);
   const [cameraSupported, setCameraSupported] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -23,101 +32,112 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
     const checkCameraSupport = async () => {
       try {
         // Check if getUserMedia is supported and can be used
-        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+        if (
+          navigator.mediaDevices &&
+          typeof navigator.mediaDevices.getUserMedia === "function"
+        ) {
           // Try to get available devices to verify camera access
           const devices = await navigator.mediaDevices.enumerateDevices();
-          const hasVideoInput = devices.some(device => device.kind === 'videoinput');
+          const hasVideoInput = devices.some(
+            (device) => device.kind === "videoinput",
+          );
           setCameraSupported(hasVideoInput);
         } else {
           setCameraSupported(false);
         }
       } catch (error) {
-        console.log('Camera not supported:', error);
+        console.log("Camera not supported:", error);
         setCameraSupported(false);
       }
     };
-    
+
     checkCameraSupport();
   }, []);
 
-  const handleFiles = useCallback(async (files: FileList) => {
-    const file = files[0];
-    if (!file) return;
+  const handleFiles = useCallback(
+    async (files: FileList) => {
+      const file = files[0];
+      if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
-      return;
-    }
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file");
+        return;
+      }
 
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
-      return;
-    }
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size must be less than 10MB");
+        return;
+      }
 
-    // Create preview URL
-    const preview = URL.createObjectURL(file);
+      // Create preview URL
+      const preview = URL.createObjectURL(file);
 
-    const receipt: UploadedReceipt = {
-      file,
-      preview,
-      isProcessing: true
-    };
+      const receipt: UploadedReceipt = {
+        file,
+        preview,
+        isProcessing: true,
+      };
 
-    setUploadedReceipt(receipt);
-    onReceiptUploaded(receipt);
+      setUploadedReceipt(receipt);
+      onReceiptUploaded(receipt);
 
-    // Process OCR
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
+      // Process OCR
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
 
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        body: formData
-      });
+        const response = await fetch("/api/ocr", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (response.ok) {
-        const ocrResult: OCRResult = await response.json();
+        if (response.ok) {
+          const ocrResult: OCRResult = await response.json();
+          const updatedReceipt = {
+            ...receipt,
+            ocrResult,
+            isProcessing: false,
+          };
+          setUploadedReceipt(updatedReceipt);
+          onReceiptUploaded(updatedReceipt);
+        } else {
+          // Log the actual error response
+          const errorText = await response.text();
+          console.error("OCR API error:", response.status, errorText);
+          throw new Error(`OCR processing failed: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("OCR error:", error);
         const updatedReceipt = {
           ...receipt,
-          ocrResult,
-          isProcessing: false
+          isProcessing: false,
+          ocrResult: {
+            extractedText: "OCR processing failed",
+            detectedAmounts: [],
+            confidence: 0,
+            language: "eng",
+          },
         };
         setUploadedReceipt(updatedReceipt);
         onReceiptUploaded(updatedReceipt);
-      } else {
-        // Log the actual error response
-        const errorText = await response.text();
-        console.error('OCR API error:', response.status, errorText);
-        throw new Error(`OCR processing failed: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('OCR error:', error);
-      const updatedReceipt = {
-        ...receipt,
-        isProcessing: false,
-        ocrResult: {
-          extractedText: 'OCR processing failed',
-          detectedAmounts: [],
-          confidence: 0,
-          language: 'eng'
-        }
-      };
-      setUploadedReceipt(updatedReceipt);
-      onReceiptUploaded(updatedReceipt);
-      
-      // Show a more user-friendly message
-      console.log('OCR failed, but you can still enter the amount manually');
-    }
-  }, [onReceiptUploaded]);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleFiles(e.target.files);
-    }
-  }, [handleFiles]);
+        // Show a more user-friendly message
+        console.log("OCR failed, but you can still enter the amount manually");
+      }
+    },
+    [onReceiptUploaded],
+  );
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        handleFiles(e.target.files);
+      }
+    },
+    [handleFiles],
+  );
 
   const removeReceipt = useCallback(() => {
     if (uploadedReceipt?.preview) {
@@ -126,19 +146,22 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
     setUploadedReceipt(null);
   }, [uploadedReceipt]);
 
-  const handleCameraCapture = useCallback(async (file: File) => {
-    // Create a FileList-like object
-    const fileList = {
-      0: file,
-      length: 1,
-      item: (index: number) => index === 0 ? file : null,
-      [Symbol.iterator]: function* () {
-        yield file;
-      }
-    } as FileList;
-    
-    await handleFiles(fileList);
-  }, [handleFiles]);
+  const handleCameraCapture = useCallback(
+    async (file: File) => {
+      // Create a FileList-like object
+      const fileList = {
+        0: file,
+        length: 1,
+        item: (index: number) => (index === 0 ? file : null),
+        [Symbol.iterator]: function* () {
+          yield file;
+        },
+      } as FileList;
+
+      await handleFiles(fileList);
+    },
+    [handleFiles],
+  );
 
   return (
     <div className="space-y-4">
@@ -148,7 +171,7 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
           onClose={() => setShowCamera(false)}
         />
       )}
-      
+
       {!uploadedReceipt ? (
         <div className="space-y-6">
           {/* Camera Option */}
@@ -164,7 +187,7 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
                   Take a photo of your receipt
                 </p>
                 <p className="text-[var(--app-foreground-muted)] text-sm">
-                  We'll automatically extract the amount
+                  We&apos;ll automatically extract the amount
                 </p>
               </div>
               <Button
@@ -173,13 +196,15 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
                   if (cameraSupported) {
                     setShowCamera(true);
                   } else {
-                    alert('Camera not supported on this device. Please use "Choose File" instead.');
+                    alert(
+                      'Camera not supported on this device. Please use "Choose File" instead.',
+                    );
                   }
                 }}
                 disabled={isProcessing}
                 className="w-full h-12"
               >
-                {cameraSupported ? 'Open Camera' : 'Camera Not Available'}
+                {cameraSupported ? "Open Camera" : "Camera Not Available"}
               </Button>
             </div>
           </div>
@@ -187,7 +212,9 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
           {/* Divider */}
           <div className="flex items-center">
             <div className="flex-1 border-t border-[var(--app-card-border)]"></div>
-            <span className="px-4 text-[var(--app-foreground-muted)] text-sm">or</span>
+            <span className="px-4 text-[var(--app-foreground-muted)] text-sm">
+              or
+            </span>
             <div className="flex-1 border-t border-[var(--app-card-border)]"></div>
           </div>
 
@@ -196,7 +223,11 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
             <div className="space-y-4">
               <div className="flex justify-center">
                 <div className="w-12 h-12 bg-[var(--app-gray)] rounded-full flex items-center justify-center">
-                  <Icon name="upload" size="lg" className="text-[var(--app-foreground-muted)]" />
+                  <Icon
+                    name="upload"
+                    size="lg"
+                    className="text-[var(--app-foreground-muted)]"
+                  />
                 </div>
               </div>
               <div>
@@ -220,7 +251,7 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
             <button
               onClick={() => {
                 // This could trigger manual amount entry
-                console.log('Manual entry clicked');
+                console.log("Manual entry clicked");
               }}
               className="text-[var(--app-accent)] text-sm hover:underline"
             >
@@ -237,7 +268,7 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
             onChange={handleFileInput}
             className="hidden"
           />
-          
+
           {/* File Upload Input */}
           <input
             ref={fileInputRef}
@@ -262,7 +293,7 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
               ×
             </button>
           </div>
-          
+
           {uploadedReceipt.isProcessing && (
             <div className="text-center">
               <p className="text-[var(--app-foreground-muted)]">
@@ -277,11 +308,15 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
               {uploadedReceipt.ocrResult.detectedAmounts.length > 0 ? (
                 <div>
                   <p className="text-sm text-[var(--app-foreground-muted)]">
-                    Found amounts: {uploadedReceipt.ocrResult.detectedAmounts.map(a => `$${a}`).join(', ')}
+                    Found amounts:{" "}
+                    {uploadedReceipt.ocrResult.detectedAmounts
+                      .map((a) => `$${a}`)
+                      .join(", ")}
                   </p>
                   {uploadedReceipt.ocrResult.suggestedAmount && (
                     <p className="text-sm font-medium text-[var(--app-accent)]">
-                      Suggested total: ${uploadedReceipt.ocrResult.suggestedAmount} USDC
+                      Suggested total: $
+                      {uploadedReceipt.ocrResult.suggestedAmount} USDC
                     </p>
                   )}
                 </div>
@@ -314,7 +349,11 @@ interface FriendSelectorProps {
   currentUserFid: number;
 }
 
-export function FriendSelector({ selectedFriends, onFriendsSelected, currentUserFid }: FriendSelectorProps) {
+export function FriendSelector({
+  selectedFriends,
+  onFriendsSelected,
+  currentUserFid,
+}: FriendSelectorProps) {
   const [friends, setFriends] = useState<FarcasterFriend[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -323,35 +362,45 @@ export function FriendSelector({ selectedFriends, onFriendsSelected, currentUser
   const loadFriends = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/friends?fid=${currentUserFid}&search=${searchQuery}&limit=20`);
+      const response = await fetch(
+        `/api/friends?fid=${currentUserFid}&search=${searchQuery}&limit=20`,
+      );
       if (response.ok) {
         const data = await response.json();
         setFriends(data.friends);
       }
     } catch (error) {
-      console.error('Error loading friends:', error);
+      console.error("Error loading friends:", error);
     } finally {
       setLoading(false);
     }
   }, [currentUserFid, searchQuery]);
 
-  const toggleFriend = useCallback((friend: FarcasterFriend) => {
-    const isSelected = selectedFriends.some(f => f.fid === friend.fid);
-    if (isSelected) {
-      onFriendsSelected(selectedFriends.filter(f => f.fid !== friend.fid));
-    } else {
-      onFriendsSelected([...selectedFriends, friend]);
-    }
-  }, [selectedFriends, onFriendsSelected]);
+  const toggleFriend = useCallback(
+    (friend: FarcasterFriend) => {
+      const isSelected = selectedFriends.some((f) => f.fid === friend.fid);
+      if (isSelected) {
+        onFriendsSelected(selectedFriends.filter((f) => f.fid !== friend.fid));
+      } else {
+        onFriendsSelected([...selectedFriends, friend]);
+      }
+    },
+    [selectedFriends, onFriendsSelected],
+  );
 
-  const removeFriend = useCallback((fid: number) => {
-    onFriendsSelected(selectedFriends.filter(f => f.fid !== fid));
-  }, [selectedFriends, onFriendsSelected]);
+  const removeFriend = useCallback(
+    (fid: number) => {
+      onFriendsSelected(selectedFriends.filter((f) => f.fid !== fid));
+    },
+    [selectedFriends, onFriendsSelected],
+  );
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-medium mb-2">Selected Friends ({selectedFriends.length})</h3>
+        <h3 className="font-medium mb-2">
+          Selected Friends ({selectedFriends.length})
+        </h3>
         {selectedFriends.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {selectedFriends.map((friend, index) => (
@@ -360,7 +409,7 @@ export function FriendSelector({ selectedFriends, onFriendsSelected, currentUser
                 className="flex items-center space-x-2 bg-[var(--app-accent-light)] px-3 py-1 rounded-full"
               >
                 <img
-                  src={friend.pfpUrl || '/placeholder-avatar.png'}
+                  src={friend.pfpUrl || "/placeholder-avatar.png"}
                   alt={friend.displayName}
                   className="w-6 h-6 rounded-full"
                 />
@@ -417,7 +466,9 @@ export function FriendSelector({ selectedFriends, onFriendsSelected, currentUser
 
           <div className="max-h-60 overflow-y-auto space-y-2">
             {friends.map((friend, index) => {
-              const isSelected = selectedFriends.some(f => f.fid === friend.fid);
+              const isSelected = selectedFriends.some(
+                (f) => f.fid === friend.fid,
+              );
               return (
                 <div
                   key={`${friend.fid}-${friend.username}-${index}`}
@@ -429,7 +480,7 @@ export function FriendSelector({ selectedFriends, onFriendsSelected, currentUser
                   onClick={() => toggleFriend(friend)}
                 >
                   <img
-                    src={friend.pfpUrl || '/placeholder-avatar.png'}
+                    src={friend.pfpUrl || "/placeholder-avatar.png"}
                     alt={friend.displayName}
                     className="w-10 h-10 rounded-full"
                   />
@@ -466,87 +517,117 @@ interface BillSplitterProps {
   onSplitConfigChange: (config: SplitConfiguration) => void;
 }
 
-export function BillSplitter({ totalAmount, participants, splitConfig, onSplitConfigChange }: BillSplitterProps) {
+export function BillSplitter({
+  totalAmount,
+  participants,
+  splitConfig,
+  onSplitConfigChange,
+}: BillSplitterProps) {
   // Auto-update equal split when participants or totalAmount changes
   useEffect(() => {
-    if (splitConfig.type === 'equal' && participants.length > 0) {
+    if (splitConfig.type === "equal" && participants.length > 0) {
       const expectedAmountPerPerson = totalAmount / participants.length;
-      
+
       // Only update if the current config doesn't match expected values
-      const needsUpdate = splitConfig.participants.length !== participants.length ||
-        splitConfig.participants.some(p => {
-          const participant = participants.find(part => part.fid === p.fid);
+      const needsUpdate =
+        splitConfig.participants.length !== participants.length ||
+        splitConfig.participants.some((p) => {
+          const participant = participants.find((part) => part.fid === p.fid);
           return !participant || (p.amount ?? 0) !== expectedAmountPerPerson;
         });
-      
+
       if (needsUpdate) {
         const newConfig: SplitConfiguration = {
-          type: 'equal',
-          participants: participants.map(p => ({
+          type: "equal",
+          participants: participants.map((p) => ({
             fid: p.fid,
-            amount: expectedAmountPerPerson
-          }))
+            amount: expectedAmountPerPerson,
+          })),
         };
         onSplitConfigChange(newConfig);
       }
     }
-  }, [participants, totalAmount, splitConfig.type, splitConfig.participants, onSplitConfigChange]);
+  }, [
+    participants,
+    totalAmount,
+    splitConfig.type,
+    splitConfig.participants,
+    onSplitConfigChange,
+  ]);
 
-  const updateSplitType = useCallback((type: 'equal' | 'custom' | 'percentage') => {
-    const newConfig: SplitConfiguration = {
-      type,
-      participants: participants.map(p => {
-        const existingConfig = splitConfig.participants.find(sp => sp.fid === p.fid);
-        
-        if (type === 'equal') {
-          return {
-            fid: p.fid,
-            amount: totalAmount / participants.length
-          };
-        } else if (type === 'custom') {
-          return {
-            fid: p.fid,
-            amount: existingConfig?.amount || 0
-          };
-        } else { // percentage
-          return {
-            fid: p.fid,
-            percentage: existingConfig?.percentage || (100 / participants.length)
-          };
-        }
-      })
-    };
-    
-    onSplitConfigChange(newConfig);
-  }, [totalAmount, participants, splitConfig, onSplitConfigChange]);
+  const updateSplitType = useCallback(
+    (type: "equal" | "custom" | "percentage") => {
+      const newConfig: SplitConfiguration = {
+        type,
+        participants: participants.map((p) => {
+          const existingConfig = splitConfig.participants.find(
+            (sp) => sp.fid === p.fid,
+          );
 
-  const updateParticipantAmount = useCallback((fid: number, amount: number) => {
-    const newConfig = {
-      ...splitConfig,
-      participants: splitConfig.participants.map(p =>
-        p.fid === fid ? { ...p, amount } : p
-      )
-    };
-    onSplitConfigChange(newConfig);
-  }, [splitConfig, onSplitConfigChange]);
+          if (type === "equal") {
+            return {
+              fid: p.fid,
+              amount: totalAmount / participants.length,
+            };
+          } else if (type === "custom") {
+            return {
+              fid: p.fid,
+              amount: existingConfig?.amount || 0,
+            };
+          } else {
+            // percentage
+            return {
+              fid: p.fid,
+              percentage:
+                existingConfig?.percentage || 100 / participants.length,
+            };
+          }
+        }),
+      };
 
-  const updateParticipantPercentage = useCallback((fid: number, percentage: number) => {
-    const newConfig = {
-      ...splitConfig,
-      participants: splitConfig.participants.map(p =>
-        p.fid === fid ? { ...p, percentage } : p
-      )
-    };
-    onSplitConfigChange(newConfig);
-  }, [splitConfig, onSplitConfigChange]);
+      onSplitConfigChange(newConfig);
+    },
+    [totalAmount, participants, splitConfig, onSplitConfigChange],
+  );
 
-  const totalCalculated = splitConfig.type === 'percentage' 
-    ? (splitConfig.participants.reduce((sum, p) => sum + (p.percentage || 0), 0))
-    : splitConfig.participants.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const updateParticipantAmount = useCallback(
+    (fid: number, amount: number) => {
+      const newConfig = {
+        ...splitConfig,
+        participants: splitConfig.participants.map((p) =>
+          p.fid === fid ? { ...p, amount } : p,
+        ),
+      };
+      onSplitConfigChange(newConfig);
+    },
+    [splitConfig, onSplitConfigChange],
+  );
 
-  const isValid = splitConfig.type === 'percentage' 
-    ? Math.abs(totalCalculated - 100) < 0.01
-    : Math.abs(totalCalculated - totalAmount) < 0.01;
+  const updateParticipantPercentage = useCallback(
+    (fid: number, percentage: number) => {
+      const newConfig = {
+        ...splitConfig,
+        participants: splitConfig.participants.map((p) =>
+          p.fid === fid ? { ...p, percentage } : p,
+        ),
+      };
+      onSplitConfigChange(newConfig);
+    },
+    [splitConfig, onSplitConfigChange],
+  );
+
+  const totalCalculated =
+    splitConfig.type === "percentage"
+      ? splitConfig.participants.reduce(
+          (sum, p) => sum + (p.percentage || 0),
+          0,
+        )
+      : splitConfig.participants.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  const isValid =
+    splitConfig.type === "percentage"
+      ? Math.abs(totalCalculated - 100) < 0.01
+      : Math.abs(totalCalculated - totalAmount) < 0.01;
 
   return (
     <div className="space-y-4">
@@ -554,23 +635,23 @@ export function BillSplitter({ totalAmount, participants, splitConfig, onSplitCo
         <h3 className="font-medium mb-3">How to split the bill?</h3>
         <div className="flex space-x-2">
           <Button
-            variant={splitConfig.type === 'equal' ? 'primary' : 'outline'}
+            variant={splitConfig.type === "equal" ? "primary" : "outline"}
             size="sm"
-            onClick={() => updateSplitType('equal')}
+            onClick={() => updateSplitType("equal")}
           >
             Equal
           </Button>
           <Button
-            variant={splitConfig.type === 'custom' ? 'primary' : 'outline'}
+            variant={splitConfig.type === "custom" ? "primary" : "outline"}
             size="sm"
-            onClick={() => updateSplitType('custom')}
+            onClick={() => updateSplitType("custom")}
           >
             Custom
           </Button>
           <Button
-            variant={splitConfig.type === 'percentage' ? 'primary' : 'outline'}
+            variant={splitConfig.type === "percentage" ? "primary" : "outline"}
             size="sm"
-            onClick={() => updateSplitType('percentage')}
+            onClick={() => updateSplitType("percentage")}
           >
             Percentage
           </Button>
@@ -579,29 +660,41 @@ export function BillSplitter({ totalAmount, participants, splitConfig, onSplitCo
 
       <div className="space-y-3">
         {participants.map((participant, index) => {
-          const config = splitConfig.participants.find(p => p.fid === participant.fid);
-          
+          const config = splitConfig.participants.find(
+            (p) => p.fid === participant.fid,
+          );
+
           return (
-            <div key={`${participant.fid}-${participant.username}-${index}`} className="flex items-center space-x-3 p-3 bg-[var(--app-card-bg)] rounded-lg">
+            <div
+              key={`${participant.fid}-${participant.username}-${index}`}
+              className="flex items-center space-x-3 p-3 bg-[var(--app-card-bg)] rounded-lg"
+            >
               <img
-                src={participant.pfpUrl || '/placeholder-avatar.png'}
+                src={participant.pfpUrl || "/placeholder-avatar.png"}
                 alt={participant.displayName}
                 className="w-10 h-10 rounded-full"
               />
               <div className="flex-1">
                 <p className="font-medium">{participant.displayName}</p>
-                <p className="text-sm text-[var(--app-foreground-muted)]">@{participant.username}</p>
+                <p className="text-sm text-[var(--app-foreground-muted)]">
+                  @{participant.username}
+                </p>
               </div>
               <div className="flex items-center space-x-2">
-                {splitConfig.type === 'equal' ? (
+                {splitConfig.type === "equal" ? (
                   <span className="font-medium">
                     ${(totalAmount / participants.length).toFixed(2)}
                   </span>
-                ) : splitConfig.type === 'custom' ? (
+                ) : splitConfig.type === "custom" ? (
                   <input
                     type="number"
                     value={config?.amount || 0}
-                    onChange={(e) => updateParticipantAmount(participant.fid, parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      updateParticipantAmount(
+                        participant.fid,
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
                     className="w-20 px-2 py-1 text-right bg-[var(--app-background)] border border-[var(--app-card-border)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)]"
                     step="0.01"
                     min="0"
@@ -611,7 +704,12 @@ export function BillSplitter({ totalAmount, participants, splitConfig, onSplitCo
                     <input
                       type="number"
                       value={config?.percentage || 0}
-                      onChange={(e) => updateParticipantPercentage(participant.fid, parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        updateParticipantPercentage(
+                          participant.fid,
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
                       className="w-16 px-2 py-1 text-right bg-[var(--app-background)] border border-[var(--app-card-border)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)]"
                       step="0.1"
                       min="0"
@@ -629,23 +727,22 @@ export function BillSplitter({ totalAmount, participants, splitConfig, onSplitCo
       <div className="bg-[var(--app-gray)] p-3 rounded-lg">
         <div className="flex justify-between items-center">
           <span className="font-medium">Total:</span>
-          <span className={`font-medium ${isValid ? 'text-[var(--app-accent)]' : 'text-red-500'}`}>
-            {splitConfig.type === 'percentage' 
+          <span
+            className={`font-medium ${isValid ? "text-[var(--app-accent)]" : "text-red-500"}`}
+          >
+            {splitConfig.type === "percentage"
               ? `${totalCalculated.toFixed(1)}%`
-              : `$${totalCalculated.toFixed(2)}`
-            }
+              : `$${totalCalculated.toFixed(2)}`}
           </span>
         </div>
         {!isValid && (
           <p className="text-red-500 text-sm mt-1">
-            {splitConfig.type === 'percentage' 
-              ? 'Percentages must add up to 100%'
-              : `Amounts must add up to $${totalAmount}`
-            }
+            {splitConfig.type === "percentage"
+              ? "Percentages must add up to 100%"
+              : `Amounts must add up to $${totalAmount}`}
           </p>
         )}
       </div>
     </div>
   );
 }
-
