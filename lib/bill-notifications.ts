@@ -1,5 +1,5 @@
 import { sendFrameNotification } from "./notification-client";
-import { Bill, BillParticipant, NotificationPayload } from "./types";
+import { Bill, BillParticipant } from "./types";
 
 export class BillNotifications {
   
@@ -117,7 +117,7 @@ export class BillNotifications {
   static async notifyPaymentFailed(
     bill: Bill, 
     participantFid: number, 
-    error: string
+    _error: string
   ): Promise<void> {
     // Notify the participant who's payment failed
     await sendFrameNotification({

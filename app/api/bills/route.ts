@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate split amounts
-    const processedParticipants: BillParticipant[] = participants.map((p: any) => {
+    const processedParticipants: BillParticipant[] = participants.map((p: { fid: number; displayName: string; username?: string; pfpUrl?: string; amount?: number; percentage?: number }) => {
       let amountOwed = 0;
       
       if (splitType === 'equal') {

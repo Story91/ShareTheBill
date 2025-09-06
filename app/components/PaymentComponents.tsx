@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { Button, Icon } from "./DemoComponents";
-import { Bill, BillParticipant, PaymentResult } from "@/lib/types";
+import { Bill, PaymentResult } from "@/lib/types";
 import {
   Transaction,
   TransactionButton,
@@ -30,6 +30,68 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
 
+  // All hooks must be at the top
+  const handlePaymentSuccess = useCallback(async (response: TransactionResponse) => {
+    const transactionHash = response.transactionReceipts[0].transactionHash;
+    
+    setPaymentStatus('processing');
+    
+    try {
+      // Record payment in backend
+      const paymentResponse = await fetch(`/api/bills/${bill.id}/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          participantFid,
+          amount: bill.participants.find(p => p.fid === participantFid)?.amountOwed || 0,
+          currency: bill.currency,
+          transactionHash,
+          recipientAddress: address
+        })
+      });
+
+      if (paymentResponse.ok) {
+        const result: PaymentResult = {
+          success: true,
+          transactionHash,
+          timestamp: new Date().toISOString()
+        };
+        
+        setPaymentResult(result);
+        setPaymentStatus('completed');
+        onPaymentComplete(result);
+      } else {
+        throw new Error('Failed to record payment');
+      }
+    } catch (error) {
+      console.error('Payment recording failed:', error);
+      const result: PaymentResult = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      };
+      
+      setPaymentResult(result);
+      setPaymentStatus('failed');
+      onPaymentComplete(result);
+    }
+  }, [bill.id, participantFid, bill.currency, address, onPaymentComplete]);
+
+  const handlePaymentError = useCallback((error: TransactionError) => {
+    console.error("Payment failed:", error);
+    setPaymentStatus('failed');
+    const result: PaymentResult = {
+      success: false,
+      error: error.message || 'Transaction failed',
+      timestamp: new Date().toISOString()
+    };
+    setPaymentResult(result);
+    onPaymentComplete(result);
+  }, [onPaymentComplete]);
+
+  // All conditional logic after hooks
   const participant = bill.participants.find(p => p.fid === participantFid);
   
   if (!participant) {
@@ -66,66 +128,6 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
     },
   ] : [];
 
-  const handlePaymentSuccess = useCallback(async (response: TransactionResponse) => {
-    const transactionHash = response.transactionReceipts[0].transactionHash;
-    
-    setPaymentStatus('processing');
-    
-    try {
-      // Record payment in backend
-      const paymentResponse = await fetch(`/api/bills/${bill.id}/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          participantFid,
-          amount: participant.amountOwed,
-          currency: bill.currency,
-          transactionHash,
-          recipientAddress: address
-        })
-      });
-
-      if (paymentResponse.ok) {
-        const result: PaymentResult = {
-          success: true,
-          transactionHash,
-          timestamp: new Date().toISOString()
-        };
-        
-        setPaymentResult(result);
-        setPaymentStatus('completed');
-        onPaymentComplete(result);
-      } else {
-        throw new Error('Failed to record payment');
-      }
-    } catch (error) {
-      console.error('Payment recording failed:', error);
-      const result: PaymentResult = {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      };
-      
-      setPaymentResult(result);
-      setPaymentStatus('failed');
-      onPaymentComplete(result);
-    }
-  }, [bill.id, participantFid, participant.amountOwed, bill.currency, address, onPaymentComplete]);
-
-  const handlePaymentError = useCallback((error: TransactionError) => {
-    console.error("Payment failed:", error);
-    setPaymentStatus('failed');
-    const result: PaymentResult = {
-      success: false,
-      error: error.message || 'Transaction failed',
-      timestamp: new Date().toISOString()
-    };
-    setPaymentResult(result);
-    onPaymentComplete(result);
-  }, [onPaymentComplete]);
-
   return (
     <div className="space-y-4">
       <div className="bg-[var(--app-card-bg)] p-4 rounded-lg">
@@ -156,12 +158,11 @@ export function PaymentFlow({ bill, participantFid, onPaymentComplete }: Payment
             <TransactionButton 
               className="w-full bg-[var(--app-accent)] hover:bg-[var(--app-accent-hover)] text-white font-medium py-3 px-6 rounded-lg"
               disabled={paymentStatus === 'processing'}
-            >
-              {paymentStatus === 'processing' 
+              text={paymentStatus === 'processing' 
                 ? 'Processing Payment...' 
                 : `Pay ${participant.amountOwed} ${bill.currency}`
               }
-            </TransactionButton>
+            />
             <TransactionStatus>
               <TransactionStatusAction />
               <TransactionStatusLabel />

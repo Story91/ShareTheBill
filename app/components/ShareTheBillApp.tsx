@@ -14,7 +14,6 @@ import {
   BillParticipant,
   PaymentResult 
 } from "@/lib/types";
-import { nanoid } from "nanoid";
 
 type AppView = 'home' | 'create' | 'history' | 'bill' | 'payment';
 
@@ -23,7 +22,6 @@ interface ShareTheBillAppProps {
 }
 
 export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
-  const { context } = useMiniKit();
   const [currentView, setCurrentView] = useState<AppView>('create'); // Start with create view
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   

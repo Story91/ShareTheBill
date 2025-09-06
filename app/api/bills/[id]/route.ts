@@ -4,10 +4,11 @@ import { BillStorage } from "@/lib/bill-storage";
 // GET /api/bills/[id] - Get specific bill
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const billId = params.id;
+    const { id } = await params;
+    const billId = id;
     
     if (!billId) {
       return NextResponse.json(
@@ -39,10 +40,11 @@ export async function GET(
 // PATCH /api/bills/[id] - Update bill
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const billId = params.id;
+    const { id } = await params;
+    const billId = id;
     const updates = await request.json();
     
     if (!billId) {
@@ -68,10 +70,10 @@ export async function PATCH(
     
     const filteredUpdates = Object.keys(updates)
       .filter(key => allowedUpdates.includes(key))
-      .reduce((obj: any, key) => {
+      .reduce((obj: Record<string, unknown>, key) => {
         obj[key] = updates[key];
         return obj;
-      }, {});
+      }, {} as Record<string, unknown>);
 
     const success = await BillStorage.updateBill(billId, filteredUpdates);
     
@@ -101,10 +103,11 @@ export async function PATCH(
 // DELETE /api/bills/[id] - Delete bill
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const billId = params.id;
+    const { id } = await params;
+    const billId = id;
     const { searchParams } = new URL(request.url);
     const requestorFid = searchParams.get("fid");
     

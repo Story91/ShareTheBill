@@ -6,18 +6,17 @@ import { BillNotifications } from "@/lib/bill-notifications";
 // POST /api/bills/[id]/pay - Process payment for a bill
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const billId = params.id;
+    const { id } = await params;
+    const billId = id;
     const body = await request.json();
     
     const {
       participantFid,
       amount,
-      currency = 'USDC',
-      transactionHash,
-      recipientAddress
+      transactionHash
     }: PaymentRequest & { transactionHash: string } = body;
 
     if (!billId || !participantFid || !amount || !transactionHash) {
@@ -134,10 +133,11 @@ export async function POST(
 // GET /api/bills/[id]/pay - Get payment information for a bill
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const billId = params.id;
+    const { id } = await params;
+    const billId = id;
     const { searchParams } = new URL(request.url);
     const participantFid = searchParams.get("participantFid");
     

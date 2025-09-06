@@ -1,6 +1,6 @@
 // Bill storage utilities using Redis
 import { redis } from "./redis";
-import { Bill, BillParticipant, BillSummary } from "./types";
+import { Bill, BillSummary } from "./types";
 
 const BILL_KEY_PREFIX = "sharethebill:bill:";
 const USER_BILLS_KEY_PREFIX = "sharethebill:user_bills:";
@@ -42,8 +42,12 @@ export class BillStorage {
       }
       
       // Store participants mapping
-      const participantFids = bill.participants.map(p => p.fid);
-      await redis.sadd(this.getBillParticipantsKey(bill.id), ...participantFids);
+      const participantFids = bill.participants.map(p => p.fid.toString());
+      if (participantFids.length > 0) {
+        for (const fid of participantFids) {
+          await redis.sadd(this.getBillParticipantsKey(bill.id), fid);
+        }
+      }
       
       return true;
     } catch (error) {

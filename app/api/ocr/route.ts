@@ -114,7 +114,7 @@ function extractAmountsFromText(text: string): number[] {
       const amountStr = match[1];
       
       // Normalize the amount string
-      let normalizedAmount = amountStr
+      const normalizedAmount = amountStr
         .replace(/\s/g, '') // Remove spaces
         .replace(',', '.'); // Replace comma with dot for parsing
       

@@ -70,7 +70,7 @@ export interface NotificationPayload {
   title: string;
   body: string;
   actionUrl?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 export interface BillSummary {

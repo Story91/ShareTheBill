@@ -41,10 +41,12 @@ export class UnauthorizedError extends AppError {
 }
 
 export class PaymentError extends AppError {
-  constructor(message: string, details?: any) {
+  public details?: Record<string, unknown>;
+  
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'PAYMENT_ERROR', 400);
     if (details) {
-      (this as any).details = details;
+      this.details = details;
     }
   }
 }
@@ -62,15 +64,18 @@ export class NetworkError extends AppError {
 }
 
 // Error handler for API responses
-export function handleApiError(error: any): AppError {
+export function handleApiError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
   }
 
-  if (error?.response) {
+  const errorObj = error as Record<string, unknown>;
+  
+  if (errorObj?.response) {
     // HTTP error response
-    const status = error.response.status;
-    const message = error.response.data?.error || error.response.statusText || 'Request failed';
+    const response = errorObj.response as { status: number; data?: { error?: string }; statusText?: string };
+    const status = response.status;
+    const message = response.data?.error || response.statusText || 'Request failed';
     
     switch (status) {
       case 400:
@@ -84,12 +89,12 @@ export function handleApiError(error: any): AppError {
     }
   }
 
-  if (error?.code === 'NETWORK_ERROR' || !navigator.onLine) {
+  if (errorObj?.code === 'NETWORK_ERROR' || !navigator.onLine) {
     return new NetworkError('Please check your internet connection');
   }
 
   // Generic error
-  const message = error?.message || 'An unexpected error occurred';
+  const message = (errorObj?.message as string) || 'An unexpected error occurred';
   return new AppError(message);
 }
 
@@ -145,7 +150,7 @@ export async function safeAsync<T>(
 }
 
 // Validation helpers
-export function validateRequired(value: any, fieldName: string): void {
+export function validateRequired(value: unknown, fieldName: string): void {
   if (value === null || value === undefined || value === '') {
     throw new ValidationError(`${fieldName} is required`);
   }
@@ -164,16 +169,16 @@ export function validateEmail(email: string): void {
   }
 }
 
-export function validateFid(fid: any): number {
-  const fidNumber = parseInt(fid);
+export function validateFid(fid: unknown): number {
+  const fidNumber = typeof fid === 'string' ? parseInt(fid, 10) : Number(fid);
   if (isNaN(fidNumber) || fidNumber <= 0) {
     throw new ValidationError('Invalid Farcaster ID');
   }
   return fidNumber;
 }
 
-export function validateAmount(amount: any, currency: string = 'USDC'): number {
-  const amountNumber = parseFloat(amount);
+export function validateAmount(amount: unknown, currency: string = 'USDC'): number {
+  const amountNumber = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
   if (isNaN(amountNumber) || amountNumber <= 0) {
     throw new ValidationError(`Invalid amount for ${currency}`);
   }
@@ -225,7 +230,7 @@ export function getUserFriendlyMessage(error: AppError): string {
 // Error boundary helper
 export function createErrorBoundaryProps(component: string) {
   return {
-    onError: (error: Error, errorInfo: any) => {
+    onError: (error: Error, errorInfo: Record<string, unknown>) => {
       logError(error, { component, errorInfo });
     }
   };

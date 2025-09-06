@@ -44,11 +44,16 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
+    setIsCapturing(true);
+    
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
 
-    if (!context) return;
+    if (!context) {
+      setIsCapturing(false);
+      return;
+    }
 
     // Set canvas size to match video
     canvas.width = video.videoWidth;
@@ -59,6 +64,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
 
     // Convert canvas to blob
     canvas.toBlob((blob) => {
+      setIsCapturing(false);
       if (blob) {
         const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
         onCapture(file);

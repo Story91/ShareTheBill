@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, type ReactNode } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Button, Icon } from "./DemoComponents";
 import { CameraCapture } from "./CameraCapture";
-import { OCRResult, UploadedReceipt, FarcasterFriend, Bill, BillParticipant, SplitConfiguration } from "@/lib/types";
+import { OCRResult, UploadedReceipt, FarcasterFriend, SplitConfiguration } from "@/lib/types";
 
 // BillUploader Component
 interface BillUploaderProps {
@@ -12,7 +12,6 @@ interface BillUploaderProps {
 }
 
 export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUploaderProps) {
-  const [dragActive, setDragActive] = useState(false);
   const [uploadedReceipt, setUploadedReceipt] = useState<UploadedReceipt | null>(null);
   const [cameraSupported, setCameraSupported] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -23,9 +22,14 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
   useEffect(() => {
     const checkCameraSupport = async () => {
       try {
-        // Check if getUserMedia is supported
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          setCameraSupported(true);
+        // Check if getUserMedia is supported and can be used
+        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+          // Try to get available devices to verify camera access
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const hasVideoInput = devices.some(device => device.kind === 'videoinput');
+          setCameraSupported(hasVideoInput);
+        } else {
+          setCameraSupported(false);
         }
       } catch (error) {
         console.log('Camera not supported:', error);
@@ -108,26 +112,6 @@ export function BillUploader({ onReceiptUploaded, isProcessing = false }: BillUp
       console.log('OCR failed, but you can still enter the amount manually');
     }
   }, [onReceiptUploaded]);
-
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
-    }
-  }, [handleFiles]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

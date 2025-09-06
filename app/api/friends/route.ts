@@ -177,33 +177,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to simulate Farcaster API call
-async function fetchFarcasterFriends(fid: number): Promise<FarcasterFriend[]> {
-  // In production, this would make actual API calls to:
-  // 1. Farcaster Hub API or
-  // 2. Warpcast API or  
-  // 3. Neynar API or similar service
-  
-  // Example API structure:
-  // const response = await fetch(`https://api.warpcast.com/v2/following?fid=${fid}`);
-  // const data = await response.json();
-  // return data.result.users.map(transformToFarcasterFriend);
-  
-  // For now, return mock data
-  return MOCK_FRIENDS;
-}
-
-function transformToFarcasterFriend(apiUser: any): FarcasterFriend {
-  return {
-    fid: apiUser.fid,
-    username: apiUser.username,
-    displayName: apiUser.displayName || apiUser.username,
-    pfpUrl: apiUser.pfp?.url || '',
-    followerCount: apiUser.followerCount,
-    followingCount: apiUser.followingCount,
-    isFollowing: true, // Would be determined by API response
-    isFollowedBy: apiUser.viewerContext?.following || false
-  };
-}
 
 
