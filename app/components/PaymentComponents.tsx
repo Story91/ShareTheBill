@@ -3,20 +3,11 @@
 import { useState, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { Button, Icon } from "./DemoComponents";
-import { Bill, PaymentResult } from "@/lib/types";
-import {
-  Transaction,
-  TransactionButton,
-  TransactionToast,
-  TransactionToastAction,
-  TransactionToastIcon,
-  TransactionToastLabel,
-  TransactionError,
-  TransactionResponse,
-  TransactionStatusAction,
-  TransactionStatusLabel,
-  TransactionStatus,
-} from "@coinbase/onchainkit/transaction";
+import { Bill, PaymentResult, BasePayPayment } from "@/lib/types";
+// @ts-ignore - Base Pay SDK will be installed
+import { pay, getPaymentStatus } from '@base-org/account';
+// @ts-ignore - Base Pay UI will be installed
+import { BasePayButton } from '@base-org/account-ui/react';
 
 // PaymentFlow Component
 interface PaymentFlowProps {
@@ -38,74 +29,98 @@ export function PaymentFlow({
     null,
   );
 
-  // All hooks must be at the top
-  const handlePaymentSuccess = useCallback(
-    async (response: TransactionResponse) => {
-      const transactionHash = response.transactionReceipts[0].transactionHash;
+  // Base Pay payment handler
+  const handleBasePayment = useCallback(async () => {
+    if (!bill.creatorWalletAddress) {
+      alert("Error: Bill creator's wallet address not found");
+      return;
+    }
 
-      setPaymentStatus("processing");
+    const participant = bill.participants.find((p) => p.fid === participantFid);
+    if (!participant) {
+      alert("Error: Participant not found");
+      return;
+    }
 
-      try {
-        // Record payment in backend
-        const paymentResponse = await fetch(`/api/bills/${bill.id}/pay`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            participantFid,
-            amount:
-              bill.participants.find((p) => p.fid === participantFid)
-                ?.amountOwed || 0,
-            currency: bill.currency,
-            transactionHash,
-            recipientAddress: address,
-          }),
-        });
+    setPaymentStatus("processing");
 
-        if (paymentResponse.ok) {
-          const result: PaymentResult = {
-            success: true,
-            transactionHash,
-            timestamp: new Date().toISOString(),
-          };
+    try {
+      // Initiate Base Pay payment
+      const payment: BasePayPayment = await pay({
+        amount: participant.amountOwed.toString(),
+        to: bill.creatorWalletAddress, // Payment goes to bill creator
+        testnet: true, // Set to false for mainnet
+      });
 
-          setPaymentResult(result);
-          setPaymentStatus("completed");
-          onPaymentComplete(result);
-        } else {
-          throw new Error("Failed to record payment");
+      console.log(`Payment initiated! Transaction ID: ${payment.id}`);
+
+      // Poll for payment status
+      const checkPaymentStatus = async () => {
+        try {
+          const status = await getPaymentStatus({ 
+            id: payment.id,
+            testnet: true // Must match testnet setting from pay()
+          });
+
+          if (status.status === 'completed') {
+            // Record successful payment in backend
+            const paymentResponse = await fetch(`/api/bills/${bill.id}/pay`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                participantFid,
+                amount: participant.amountOwed,
+                currency: bill.currency,
+                transactionHash: payment.id, // Use Base Pay transaction ID
+                recipientAddress: bill.creatorWalletAddress,
+                basePaymentId: payment.id,
+              }),
+            });
+
+            if (paymentResponse.ok) {
+              const result: PaymentResult = {
+                success: true,
+                transactionHash: payment.id,
+                timestamp: new Date().toISOString(),
+              };
+
+              setPaymentResult(result);
+              setPaymentStatus("completed");
+              onPaymentComplete(result);
+            } else {
+              throw new Error("Failed to record payment in backend");
+            }
+          } else if (status.status === 'failed') {
+            throw new Error("Payment failed on Base");
+          } else {
+            // Still pending, check again after delay
+            setTimeout(checkPaymentStatus, 2000);
+          }
+        } catch (statusError) {
+          console.error("Error checking payment status:", statusError);
+          // Retry after delay
+          setTimeout(checkPaymentStatus, 3000);
         }
-      } catch (error) {
-        console.error("Payment recording failed:", error);
-        const result: PaymentResult = {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        };
+      };
 
-        setPaymentResult(result);
-        setPaymentStatus("failed");
-        onPaymentComplete(result);
-      }
-    },
-    [bill.id, participantFid, bill.currency, address, onPaymentComplete],
-  );
+      // Start polling
+      checkPaymentStatus();
 
-  const handlePaymentError = useCallback(
-    (error: TransactionError) => {
-      console.error("Payment failed:", error);
-      setPaymentStatus("failed");
+    } catch (error) {
+      console.error("Base Pay payment failed:", error);
       const result: PaymentResult = {
         success: false,
-        error: error.message || "Transaction failed",
+        error: error instanceof Error ? error.message : "Payment failed",
         timestamp: new Date().toISOString(),
       };
+
       setPaymentResult(result);
+      setPaymentStatus("failed");
       onPaymentComplete(result);
-    },
-    [onPaymentComplete],
-  );
+    }
+  }, [bill, participantFid, onPaymentComplete]);
 
   // All conditional logic after hooks
   const participant = bill.participants.find((p) => p.fid === participantFid);
@@ -136,17 +151,6 @@ export function PaymentFlow({
     );
   }
 
-  // Create transaction call for USDC payment
-  const calls = address
-    ? [
-        {
-          to: address, // In production, this would be the bill creator's address or a smart contract
-          data: "0x" as `0x${string}`,
-          value: BigInt(0), // USDC transfers don't use ETH value
-        },
-      ]
-    : [];
-
   return (
     <div className="space-y-4">
       <div className="bg-[var(--app-card-bg)] p-4 rounded-lg">
@@ -166,40 +170,42 @@ export function PaymentFlow({
             <span>Payment method:</span>
             <span className="font-medium">Base Pay ({bill.currency})</span>
           </div>
+          <div className="flex justify-between">
+            <span>Recipient:</span>
+            <span className="font-medium text-xs">
+              {bill.creatorWalletAddress ? 
+                `${bill.creatorWalletAddress.slice(0, 6)}...${bill.creatorWalletAddress.slice(-4)}` :
+                "Creator address not set"
+              }
+            </span>
+          </div>
         </div>
       </div>
 
-      {address ? (
+      {bill.creatorWalletAddress ? (
         <div className="text-center">
-          <Transaction
-            calls={calls}
-            onSuccess={handlePaymentSuccess}
-            onError={handlePaymentError}
+          <div 
+            style={{
+              width: '100%',
+              opacity: paymentStatus === "processing" ? 0.6 : 1,
+              pointerEvents: paymentStatus === "processing" ? 'none' : 'auto',
+            }}
           >
-            <TransactionButton
-              className="w-full bg-[var(--app-accent)] hover:bg-[var(--app-accent-hover)] text-white font-medium py-3 px-6 rounded-lg"
-              disabled={paymentStatus === "processing"}
-              text={
-                paymentStatus === "processing"
-                  ? "Processing Payment..."
-                  : `Pay ${participant.amountOwed} ${bill.currency}`
-              }
+            <BasePayButton
+              colorScheme="light"
+              onClick={handleBasePayment}
             />
-            <TransactionStatus>
-              <TransactionStatusAction />
-              <TransactionStatusLabel />
-            </TransactionStatus>
-            <TransactionToast className="mb-4">
-              <TransactionToastIcon />
-              <TransactionToastLabel />
-              <TransactionToastAction />
-            </TransactionToast>
-          </Transaction>
+          </div>
+          {paymentStatus === "processing" && (
+            <p className="text-sm text-[var(--app-foreground-muted)] mt-2">
+              Processing payment... Please wait for confirmation.
+            </p>
+          )}
         </div>
       ) : (
         <div className="text-center p-4 bg-yellow-50 rounded-lg">
           <p className="text-yellow-700">
-            Please connect your wallet to make a payment
+            Bill creator hasn't set their wallet address yet
           </p>
         </div>
       )}

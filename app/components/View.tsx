@@ -22,10 +22,13 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Button, Icon } from "./DemoComponents";
 import { ErrorBoundary } from "next/dist/client/components/error-boundary";
 import { ShareTheBillApp } from "./ShareTheBillApp";
+import { FarcasterProfile } from "./FarcasterProfile";
+import { WalletProfileSync } from "./WalletProfileSync";
 
 export function View() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
   const [frameAdded, setFrameAdded] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
@@ -88,10 +91,37 @@ export function View() {
                   <WalletDropdownDisconnect />
                 </WalletDropdown>
               </Wallet>
+              
+              {/* Profile Button */}
+              {context?.user?.fid && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowProfile(!showProfile)}
+                  className="text-[var(--app-accent)] p-2"
+                  icon={<Icon name="star" size="sm" />}
+                >
+                  Profile
+                </Button>
+              )}
             </div>
           </div>
           <div>{saveFrameButton}</div>
         </header>
+
+        {/* Farcaster Profile Section - only show when toggled */}
+        {context?.user?.fid && showProfile && (
+          <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+            <FarcasterProfile 
+              fid={context.user.fid} 
+              showFullProfile={false}
+              showWalletStatus={false}
+              compact={true}
+            />
+            {/* Automatic wallet sync component (hidden) */}
+            <WalletProfileSync userFid={context.user.fid} />
+          </div>
+        )}
 
         <main className="flex-1">
           <ErrorBoundary

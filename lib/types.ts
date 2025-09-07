@@ -18,6 +18,7 @@ export interface Bill {
   totalAmount: number;
   creatorFid: number;
   creatorUsername?: string;
+  creatorWalletAddress?: string; // Address where payments should be sent
   participants: BillParticipant[];
   status: "draft" | "pending" | "collecting" | "completed" | "cancelled";
   createdAt: string;
@@ -70,12 +71,36 @@ export interface NotificationPayload {
     | "payment_request"
     | "payment_received"
     | "bill_completed"
-    | "payment_reminder";
-  billId: string;
+    | "payment_reminder"
+    | "friend_added"
+    | "friend_removed";
+  billId?: string;
+  friendFid?: number;
   title: string;
   body: string;
   actionUrl?: string;
   data?: Record<string, unknown>;
+}
+
+export interface BasePayPayment {
+  id: string;
+  amount: string;
+  to: string;
+  testnet?: boolean;
+  payerInfoResponses?: {
+    email?: string;
+    phoneNumber?: { number: string; country: string };
+    physicalAddress?: any;
+    onchainAddress?: string;
+  };
+}
+
+export interface BasePaymentRequest {
+  billId: string;
+  participantFid: number;
+  amount: string; // USD amount for Base Pay
+  recipientAddress: string; // Bill creator's address
+  testnet?: boolean;
 }
 
 export interface BillSummary {
@@ -110,6 +135,7 @@ export interface UserProfile {
   username: string;
   displayName: string;
   pfpUrl?: string;
+  walletAddress?: string; // Ethereum address for payments
   friends: number[]; // Array of friend FIDs
   createdAt: string;
   updatedAt: string;

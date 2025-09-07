@@ -9,6 +9,7 @@ import {
   removeFriend,
   getFriends,
 } from "@/lib/user-profiles";
+import { FriendNotifications } from "@/lib/bill-notifications";
 
 // Helper function to convert NeynarUser to FarcasterFriend
 function neynarUserToFarcasterFriend(
@@ -192,6 +193,38 @@ export async function POST(request: NextRequest) {
       // For demo purposes, just return success like bills do
       console.warn(`${action} friend failed, but returning success for demo`);
       success = true;
+    }
+
+    // Send friend notifications
+    try {
+      const requesterProfile = await getUserProfile(requestorFid);
+      const friendProfile = await getUserProfile(friendFid);
+      
+      if (action === "add") {
+        // Notify the person being added as friend
+        await FriendNotifications.notifyFriendAdded(
+          requestorFid, 
+          friendFid, 
+          requesterProfile?.displayName
+        );
+        
+        // Notify the requestor of successful friend addition
+        await FriendNotifications.notifyFriendRequestAccepted(
+          requestorFid, 
+          friendFid, 
+          friendProfile?.displayName
+        );
+      } else {
+        // Notify the person being removed
+        await FriendNotifications.notifyFriendRemoved(
+          requestorFid, 
+          friendFid, 
+          requesterProfile?.displayName
+        );
+      }
+    } catch (notificationError) {
+      console.error("Failed to send friend notifications:", notificationError);
+      // Don't fail the operation if notifications fail
     }
 
     // Get updated friends list

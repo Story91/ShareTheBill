@@ -16,8 +16,14 @@ export async function POST(
     const {
       participantFid,
       amount,
-      transactionHash
-    }: PaymentRequest & { transactionHash: string } = body;
+      transactionHash,
+      basePaymentId,
+      recipientAddress
+    }: PaymentRequest & { 
+      transactionHash: string; 
+      basePaymentId?: string;
+      recipientAddress: string;
+    } = body;
 
     if (!billId || !participantFid || !amount || !transactionHash) {
       return NextResponse.json(
@@ -62,11 +68,21 @@ export async function POST(
       );
     }
 
-    // In a real implementation, you would verify the transaction on-chain here
-    // For now, we'll assume the transaction hash is valid
+    // Validate that payment was sent to the correct address (bill creator)
+    if (recipientAddress !== bill.creatorWalletAddress) {
+      return NextResponse.json(
+        { 
+          error: `Payment must be sent to bill creator's address: ${bill.creatorWalletAddress}` 
+        },
+        { status: 400 }
+      );
+    }
+
+    // In a real implementation, you would verify the Base Pay transaction here
+    // For now, we'll assume the transaction hash/basePaymentId is valid
     const paymentResult: PaymentResult = {
       success: true,
-      transactionHash,
+      transactionHash: basePaymentId || transactionHash,
       timestamp: new Date().toISOString()
     };
 

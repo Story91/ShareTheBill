@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { Button, Icon } from "./DemoComponents";
-import { BillUploader, BillSplitter } from "./BillComponents";
+import { BillUploader, BillSplitter, FriendSelector } from "./BillComponents";
 import { PaymentFlow, BillStatus } from "./PaymentComponents";
 import { BillHistory, BillStats } from "./BillHistory";
 import {
@@ -308,65 +308,11 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
           {/* Step 3: Select Friends */}
           <div className="space-y-4">
             <div className="bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium">
-                  Friends ({selectedFriends.length})
-                </h3>
-                <a
-                  href="/friends"
-                  className="text-[var(--app-accent)] text-sm hover:underline"
-                >
-                  Manage Friends
-                </a>
-              </div>
-
-              {selectedFriends.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {selectedFriends.map((friend, index) => (
-                    <div
-                      key={`${friend.fid}-${friend.username}-${index}`}
-                      className="flex items-center space-x-2 bg-[var(--app-accent-light)] px-3 py-1 rounded-full"
-                    >
-                      <img
-                        src={friend.pfpUrl || "/placeholder-avatar.png"}
-                        alt={friend.displayName}
-                        className="w-6 h-6 rounded-full"
-                      />
-                      <span className="text-sm">{friend.displayName}</span>
-                      <button
-                        onClick={() =>
-                          setSelectedFriends((prev) =>
-                            prev.filter((f) => f.fid !== friend.fid),
-                          )
-                        }
-                        className="text-[var(--app-foreground-muted)] hover:text-[var(--app-foreground)]"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <div className="w-12 h-12 bg-[var(--app-gray)] rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Icon
-                      name="plus"
-                      size="lg"
-                      className="text-[var(--app-foreground-muted)]"
-                    />
-                  </div>
-                  <p className="text-[var(--app-foreground-muted)] text-sm mb-3">
-                    No friends selected for this bill
-                  </p>
-                  <a
-                    href="/friends"
-                    className="inline-flex items-center space-x-2 text-[var(--app-accent)] hover:underline"
-                  >
-                    <Icon name="plus" size="sm" />
-                    <span>Add friends to split with</span>
-                  </a>
-                </div>
-              )}
+              <FriendSelector
+                selectedFriends={selectedFriends}
+                onFriendsSelected={setSelectedFriends}
+                currentUserFid={userFid}
+              />
             </div>
           </div>
 

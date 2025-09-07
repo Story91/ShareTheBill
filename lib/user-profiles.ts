@@ -21,6 +21,7 @@ export async function createUserProfile(
       username: neynarUser.username,
       displayName: neynarUser.display_name,
       pfpUrl: neynarUser.pfp_url,
+      walletAddress: neynarUser.verified_addresses?.eth_addresses?.[0], // Use first verified address
       friends: [],
       createdAt: now,
       updatedAt: now,
@@ -35,6 +36,7 @@ export async function createUserProfile(
     username: neynarUser.username,
     displayName: neynarUser.display_name,
     pfpUrl: neynarUser.pfp_url,
+    walletAddress: neynarUser.verified_addresses?.eth_addresses?.[0], // Use first verified address
     friends: [],
     createdAt: now,
     updatedAt: now,

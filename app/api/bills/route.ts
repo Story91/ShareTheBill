@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { BillStorage } from "@/lib/bill-storage";
 import { Bill, BillParticipant } from "@/lib/types";
 import { BillNotifications } from "@/lib/bill-notifications";
+import { getUserProfile } from "@/lib/user-profiles";
 import { nanoid } from "nanoid";
 
 // GET /api/bills - Get user's bills
@@ -108,6 +109,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get creator's wallet address from profile
+    const creatorProfile = await getUserProfile(creatorFid);
+    const creatorWalletAddress = creatorProfile?.walletAddress;
+
+    if (!creatorWalletAddress) {
+      return NextResponse.json(
+        { error: "Bill creator must have a verified wallet address. Please update your profile." },
+        { status: 400 }
+      );
+    }
+
     const now = new Date().toISOString();
     
     const bill: Bill = {
@@ -117,6 +129,7 @@ export async function POST(request: NextRequest) {
       totalAmount,
       creatorFid,
       creatorUsername,
+      creatorWalletAddress, // Add creator's wallet address for payments
       participants: processedParticipants,
       status: 'pending',
       createdAt: now,

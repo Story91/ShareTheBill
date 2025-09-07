@@ -396,56 +396,62 @@ export function FriendSelector({
   );
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="font-medium mb-2">
-          Selected Friends ({selectedFriends.length})
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium">
+          Friends ({selectedFriends.length})
         </h3>
-        {selectedFriends.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {selectedFriends.map((friend, index) => (
-              <div
-                key={`${friend.fid}-${friend.username}-${index}`}
-                className="flex items-center space-x-2 bg-[var(--app-accent-light)] px-3 py-1 rounded-full"
-              >
-                <img
-                  src={friend.pfpUrl || "/placeholder-avatar.png"}
-                  alt={friend.displayName}
-                  className="w-6 h-6 rounded-full"
-                />
-                <span className="text-sm">{friend.displayName}</span>
-                <button
-                  onClick={() => removeFriend(friend.fid)}
-                  className="text-[var(--app-foreground-muted)] hover:text-[var(--app-foreground)]"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[var(--app-foreground-muted)] text-sm">
-            No friends selected yet
-          </p>
-        )}
       </div>
 
-      <Button
-        variant="outline"
-        onClick={() => {
-          setShowSelector(!showSelector);
-          if (!showSelector && friends.length === 0) {
-            loadFriends();
-          }
-        }}
-        icon={<Icon name="plus" size="sm" />}
-      >
-        Add Friends
-      </Button>
+      {/* Compact friend avatars display */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {selectedFriends.map((friend, index) => (
+          <div
+            key={`${friend.fid}-${friend.username}-${index}`}
+            className="relative group"
+          >
+            <img
+              src={friend.pfpUrl || "/placeholder-avatar.png"}
+              alt={friend.displayName}
+              className="w-10 h-10 rounded-full border-2 border-[var(--app-card-border)] hover:border-[var(--app-accent)]"
+              title={friend.displayName}
+            />
+            <button
+              onClick={() => removeFriend(friend.fid)}
+              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs hover:bg-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        
+        {/* Add friends button */}
+        <button
+          onClick={() => {
+            setShowSelector(!showSelector);
+            if (!showSelector && friends.length === 0) {
+              loadFriends();
+            }
+          }}
+          className="w-10 h-10 rounded-full border-2 border-dashed border-[var(--app-accent)] bg-[var(--app-accent)]/10 hover:bg-[var(--app-accent)]/20 flex items-center justify-center transition-colors"
+          title="Add friends to this bill"
+        >
+          <Icon name="plus" size="sm" className="text-[var(--app-accent)]" />
+        </button>
+      </div>
+
+      {selectedFriends.length === 0 && (
+        <p className="text-[var(--app-foreground-muted)] text-sm">
+          No friends selected for this bill
+        </p>
+      )}
 
       {showSelector && (
         <div className="bg-[var(--app-card-bg)] rounded-lg p-4 border border-[var(--app-card-border)]">
           <div className="mb-4">
+            <h4 className="font-medium text-sm mb-2 text-[var(--app-foreground-muted)]">
+              Add friends to this bill
+            </h4>
             <input
               type="text"
               placeholder="Search friends..."

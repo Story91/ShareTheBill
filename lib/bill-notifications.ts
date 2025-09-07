@@ -195,6 +195,48 @@ export class BillNotifications {
       body: "Split receipts easily with friends using Farcaster & Base Pay. Create your first bill to get started!",
     });
   }
+}
+
+// Friend Notifications Class
+export class FriendNotifications {
+  // Notify when someone adds you as a friend
+  static async notifyFriendAdded(
+    requesterFid: number,
+    addedFid: number,
+    requesterName?: string
+  ): Promise<void> {
+    await sendFrameNotification({
+      fid: addedFid,
+      title: "New Friend Added! 👥",
+      body: `${requesterName || `User ${requesterFid}`} added you as a friend in ShareTheBill!`,
+    });
+  }
+
+  // Notify when someone removes you from friends
+  static async notifyFriendRemoved(
+    requesterFid: number,
+    removedFid: number,
+    requesterName?: string
+  ): Promise<void> {
+    await sendFrameNotification({
+      fid: removedFid,
+      title: "Friend Removed 😢",
+      body: `${requesterName || `User ${requesterFid}`} removed you from their friends list.`,
+    });
+  }
+
+  // Notify when you successfully add someone as a friend
+  static async notifyFriendRequestAccepted(
+    requesterFid: number,
+    friendFid: number,
+    friendName?: string
+  ): Promise<void> {
+    await sendFrameNotification({
+      fid: requesterFid,
+      title: "Friend Added Successfully! ✅",
+      body: `You've successfully added ${friendName || `User ${friendFid}`} as a friend!`,
+    });
+  }
 
   // Achievement notifications
   static async sendAchievementNotification(
