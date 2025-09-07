@@ -8,6 +8,7 @@ const USER_FRIENDS_PREFIX = "user_friends:";
 const inMemoryProfiles = new Map<number, UserProfile>();
 const inMemoryFriends = new Map<number, Set<number>>();
 
+
 export async function createUserProfile(
   neynarUser: NeynarUser,
 ): Promise<UserProfile | null> {
@@ -42,7 +43,7 @@ export async function createUserProfile(
   try {
     await redis.set(
       `${USER_PROFILE_PREFIX}${neynarUser.fid}`,
-      JSON.stringify(userProfile),
+      userProfile,
     );
     return userProfile;
   } catch (error) {
@@ -62,7 +63,15 @@ export async function getUserProfile(fid: number): Promise<UserProfile | null> {
     if (!profileData) {
       return null;
     }
-    return JSON.parse(profileData as string) as UserProfile;
+    
+    // Handle both string and object responses from Redis
+    if (typeof profileData === 'string') {
+      return JSON.parse(profileData) as UserProfile;
+    } else if (typeof profileData === 'object') {
+      return profileData as UserProfile;
+    }
+    
+    return null;
   } catch (error) {
     console.error("Error fetching user profile:", error);
     return null;
@@ -104,7 +113,7 @@ export async function updateUserProfile(
 
     await redis.set(
       `${USER_PROFILE_PREFIX}${fid}`,
-      JSON.stringify(updatedProfile),
+      updatedProfile,
     );
 
     return updatedProfile;
@@ -124,7 +133,18 @@ export async function addFriend(
     // Get or create user profile
     let userProfile = inMemoryProfiles.get(userFid);
     if (!userProfile) {
-      return false; // Profile should exist before adding friends
+      // Create a basic user profile if it doesn't exist
+      const now = new Date().toISOString();
+      userProfile = {
+        fid: userFid,
+        username: `user_${userFid}`,
+        displayName: `User ${userFid}`,
+        pfpUrl: "",
+        friends: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      inMemoryProfiles.set(userFid, userProfile);
     }
 
     // Check if friend is already added
