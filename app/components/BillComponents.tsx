@@ -14,11 +14,13 @@ import {
 interface BillUploaderProps {
   onReceiptUploaded: (receipt: UploadedReceipt) => void;
   isProcessing?: boolean;
+  onAmountSelected?: (amount: number) => void;
 }
 
 export function BillUploader({
   onReceiptUploaded,
   isProcessing = false,
+  onAmountSelected,
 }: BillUploaderProps) {
   const [uploadedReceipt, setUploadedReceipt] =
     useState<UploadedReceipt | null>(null);
@@ -88,7 +90,7 @@ export function BillUploader({
         const formData = new FormData();
         formData.append("image", file);
 
-        const response = await fetch("/api/ocr", {
+        const response = await fetch("/api/ocr-advanced", {
           method: "POST",
           body: formData,
         });
@@ -163,6 +165,7 @@ export function BillUploader({
     [handleFiles],
   );
 
+
   return (
     <div className="space-y-4">
       {showCamera && (
@@ -173,90 +176,53 @@ export function BillUploader({
       )}
 
       {!uploadedReceipt ? (
-        <div className="space-y-6">
-          {/* Camera Option */}
-          <div className="border-2 border-dashed rounded-lg p-6 text-center transition-colors border-[var(--app-card-border)] hover:border-[var(--app-accent)]">
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <div className="w-12 h-12 bg-[var(--app-accent)] rounded-full flex items-center justify-center">
-                  <Icon name="camera" size="lg" className="text-white" />
+        <div className="space-y-8">
+          {/* Modern Camera/Upload Section */}
+          <div className="glass-effect rounded-3xl p-8 text-center">
+            <div className="space-y-6">
+              {/* Modern Button Row */}
+              <div className="flex justify-center items-center space-x-8">
+                {/* Camera Button */}
+                <div className="text-center">
+                  <button
+                    className="modern-camera-button"
+                    onClick={() => {
+                      if (cameraSupported) {
+                        setShowCamera(true);
+                      } else {
+                        alert(
+                          'Camera not supported on this device. Please use gallery instead.',
+                        );
+                      }
+                    }}
+                    disabled={isProcessing}
+                    title="Take photo"
+                  >
+                    <Icon name="camera" size="lg" className="text-white" />
+                  </button>
+                  <p className="text-xs text-[var(--app-foreground-muted)] mt-2">
+                    Camera
+                  </p>
+                </div>
+
+                {/* Upload Button */}
+                <div className="text-center">
+                  <button
+                    className="modern-upload-button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessing}
+                    title="Choose from gallery"
+                  >
+                    <Icon name="upload" size="lg" className="text-white" />
+                  </button>
+                  <p className="text-xs text-[var(--app-foreground-muted)] mt-2">
+                    Gallery
+                  </p>
                 </div>
               </div>
-              <div>
-                <p className="text-[var(--app-foreground)] font-medium text-lg">
-                  Take a photo of your receipt
-                </p>
-                <p className="text-[var(--app-foreground-muted)] text-sm">
-                  We&apos;ll automatically extract the amount
-                </p>
-              </div>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  if (cameraSupported) {
-                    setShowCamera(true);
-                  } else {
-                    alert(
-                      'Camera not supported on this device. Please use "Choose File" instead.',
-                    );
-                  }
-                }}
-                disabled={isProcessing}
-                className="w-full h-12"
-              >
-                {cameraSupported ? "Open Camera" : "Camera Not Available"}
-              </Button>
+
+
             </div>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center">
-            <div className="flex-1 border-t border-[var(--app-card-border)]"></div>
-            <span className="px-4 text-[var(--app-foreground-muted)] text-sm">
-              or
-            </span>
-            <div className="flex-1 border-t border-[var(--app-card-border)]"></div>
-          </div>
-
-          {/* Upload Option */}
-          <div className="border-2 border-dashed rounded-lg p-6 text-center transition-colors border-[var(--app-card-border)] hover:border-[var(--app-accent)]">
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <div className="w-12 h-12 bg-[var(--app-gray)] rounded-full flex items-center justify-center">
-                  <Icon
-                    name="upload"
-                    size="lg"
-                    className="text-[var(--app-foreground-muted)]"
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-[var(--app-foreground)] font-medium text-lg">
-                  Upload photo from gallery
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessing}
-                className="w-full h-12"
-              >
-                Choose File
-              </Button>
-            </div>
-          </div>
-
-          {/* Manual Entry Link */}
-          <div className="text-center">
-            <button
-              onClick={() => {
-                // This could trigger manual amount entry
-                console.log("Manual entry clicked");
-              }}
-              className="text-[var(--app-accent)] text-sm hover:underline"
-            >
-              Enter amount manually
-            </button>
           </div>
 
           {/* Camera Input */}
@@ -279,65 +245,83 @@ export function BillUploader({
           />
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="relative">
+        <div className="space-y-6">
+          {/* Modern Receipt Preview */}
+          <div className="glass-effect rounded-2xl p-4 relative overflow-hidden">
             <img
               src={uploadedReceipt.preview}
               alt="Receipt preview"
-              className="w-full h-48 object-cover rounded-lg"
+              className="w-full h-56 object-cover rounded-xl shadow-lg"
             />
             <button
               onClick={removeReceipt}
-              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
+              className="absolute top-6 right-6 bg-red-500/90 hover:bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center transition-all backdrop-blur-sm border border-white/20"
             >
-              ×
+              <span className="text-white text-xl font-bold">×</span>
             </button>
+            
+            {/* Processing Overlay */}
+            {uploadedReceipt.isProcessing && (
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="text-center text-white">
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                  <p className="font-medium">Analyzing receipt...</p>
+                  <p className="text-sm opacity-75">Using AI to extract amounts</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {uploadedReceipt.isProcessing && (
-            <div className="text-center">
-              <p className="text-[var(--app-foreground-muted)]">
-                Extracting amount from receipt...
-              </p>
-            </div>
-          )}
-
+          {/* OCR Results */}
           {uploadedReceipt.ocrResult && (
-            <div className="bg-[var(--app-card-bg)] p-4 rounded-lg">
-              <h4 className="font-medium mb-2">Receipt Analysis:</h4>
+            <div className="glass-effect rounded-xl p-6">
+              <div className="flex items-center mb-4">
+                <span className="text-2xl mr-3">🤖</span>
+                <h4 className="font-semibold text-[var(--app-foreground)]">AI Analysis</h4>
+              </div>
+              
               {uploadedReceipt.ocrResult.detectedAmounts.length > 0 ? (
-                <div>
-                  <p className="text-sm text-[var(--app-foreground-muted)]">
-                    Found amounts:{" "}
-                    {uploadedReceipt.ocrResult.detectedAmounts
-                      .map((a) => `$${a}`)
-                      .join(", ")}
-                  </p>
-                  {uploadedReceipt.ocrResult.suggestedAmount && (
-                    <p className="text-sm font-medium text-[var(--app-accent)]">
-                      Suggested total: $
-                      {uploadedReceipt.ocrResult.suggestedAmount} USDC
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm text-green-800 mb-3">
+                      💰 Tap an amount to use it:
                     </p>
-                  )}
+                    
+                    {/* Clickable amount buttons */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {uploadedReceipt.ocrResult.detectedAmounts.map((amount, index) => (
+                        <button
+                          key={index}
+                          onClick={() => onAmountSelected?.(amount)}
+                          className="px-3 py-1 bg-white border border-green-300 rounded-lg text-green-700 hover:bg-green-100 hover:border-green-400 transition-colors text-sm font-medium"
+                        >
+                          ${amount}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {uploadedReceipt.ocrResult.suggestedAmount && (
+                      <p className="text-xs text-green-600 opacity-75">
+                        Suggested total: ${uploadedReceipt.ocrResult.suggestedAmount} USDC
+                      </p>
+                    )}
+                  </div>
                 </div>
               ) : uploadedReceipt.ocrResult.confidence === 0 ? (
-                <div className="text-center py-2">
-                  <p className="text-sm text-[var(--app-foreground-muted)] mb-2">
-                    📱 Receipt uploaded successfully!
-                  </p>
-                  <p className="text-xs text-[var(--app-foreground-muted)]">
-                    Please enter the amount manually below
-                  </p>
+                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-blue-800 font-medium mb-1">📱 Receipt uploaded successfully!</p>
+                  <p className="text-blue-600 text-sm">Please enter the amount manually below</p>
                 </div>
               ) : (
-                <p className="text-sm text-[var(--app-foreground-muted)]">
-                  No amounts detected. Please enter manually.
-                </p>
+                <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-amber-800">⚠️ No amounts detected. Please enter manually.</p>
+                </div>
               )}
             </div>
           )}
         </div>
       )}
+
     </div>
   );
 }
@@ -355,6 +339,7 @@ export function FriendSelector({
   currentUserFid,
 }: FriendSelectorProps) {
   const [friends, setFriends] = useState<FarcasterFriend[]>([]);
+  const [recentFriends, setRecentFriends] = useState<FarcasterFriend[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSelector, setShowSelector] = useState(false);
@@ -375,6 +360,30 @@ export function FriendSelector({
       setLoading(false);
     }
   }, [currentUserFid, searchQuery]);
+
+  // Load recent friends on component mount
+  const loadRecentFriends = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/friends?fid=${currentUserFid}&limit=6`, // Get 6 recent friends
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // Take first 6 friends as "recent" and filter out already selected
+        const recent = data.friends.slice(0, 6).filter(
+          (friend: FarcasterFriend) => !selectedFriends.some(sf => sf.fid === friend.fid)
+        );
+        setRecentFriends(recent);
+      }
+    } catch (error) {
+      console.error("Error loading recent friends:", error);
+    }
+  }, [currentUserFid, selectedFriends]);
+
+  // Load recent friends on mount and when selectedFriends changes
+  useEffect(() => {
+    loadRecentFriends();
+  }, [loadRecentFriends]);
 
   const toggleFriend = useCallback(
     (friend: FarcasterFriend) => {
@@ -405,15 +414,16 @@ export function FriendSelector({
 
       {/* Compact friend avatars display */}
       <div className="flex items-center gap-2 flex-wrap">
-        {selectedFriends.map((friend, index) => (
+        {/* Show selected friends first (max 3) */}
+        {selectedFriends.slice(0, 3).map((friend, index) => (
           <div
-            key={`${friend.fid}-${friend.username}-${index}`}
+            key={`selected-${friend.fid}-${friend.username}-${index}`}
             className="relative group"
           >
             <img
               src={friend.pfpUrl || "/placeholder-avatar.png"}
               alt={friend.displayName}
-              className="w-10 h-10 rounded-full border-2 border-[var(--app-card-border)] hover:border-[var(--app-accent)]"
+              className="w-10 h-10 rounded-full border-2 border-[var(--app-accent)] hover:border-[var(--app-accent)]"
               title={friend.displayName}
             />
             <button
@@ -422,6 +432,41 @@ export function FriendSelector({
             >
               ×
             </button>
+          </div>
+        ))}
+        
+        {/* Show "more selected" indicator if there are more than 3 selected friends */}
+        {selectedFriends.length > 3 && (
+          <div 
+            className="w-10 h-10 rounded-full bg-[var(--app-accent)]/10 border-2 border-[var(--app-accent)] flex items-center justify-center cursor-pointer hover:bg-[var(--app-accent)]/20"
+            onClick={() => {
+              setShowSelector(!showSelector);
+              if (!showSelector && friends.length === 0) {
+                loadFriends();
+              }
+            }}
+            title={`+${selectedFriends.length - 3} more selected friends`}
+          >
+            <span className="text-sm font-medium text-[var(--app-accent)]">+{selectedFriends.length - 3}</span>
+          </div>
+        )}
+
+        {/* Show recent friends (when selectedFriends < 3) */}
+        {selectedFriends.length < 3 && recentFriends.slice(0, 3 - selectedFriends.length).map((friend, index) => (
+          <div
+            key={`recent-${friend.fid}-${friend.username}-${index}`}
+            className="relative group"
+          >
+            <img
+              src={friend.pfpUrl || "/placeholder-avatar.png"}
+              alt={friend.displayName}
+              className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 hover:border-[var(--app-accent)] cursor-pointer opacity-60 hover:opacity-100 transition-all"
+              title={`Quick add: ${friend.displayName}`}
+              onClick={() => toggleFriend(friend)}
+            />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 text-white rounded-full text-xs flex items-center justify-center">
+              +
+            </div>
           </div>
         ))}
         
@@ -440,9 +485,15 @@ export function FriendSelector({
         </button>
       </div>
 
-      {selectedFriends.length === 0 && (
+      {selectedFriends.length === 0 && recentFriends.length === 0 && (
         <p className="text-[var(--app-foreground-muted)] text-sm">
-          No friends selected for this bill
+          Click ➕ to add friends to split the bill
+        </p>
+      )}
+      
+      {selectedFriends.length === 0 && recentFriends.length > 0 && (
+        <p className="text-[var(--app-foreground-muted)] text-sm">
+          Click on suggested friends or ➕ to add more
         </p>
       )}
 

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { Button, Icon } from "./DemoComponents";
 import { BillUploader, BillSplitter, FriendSelector } from "./BillComponents";
+import { AdvancedOCR } from "./AdvancedOCR";
 import { PaymentFlow, BillStatus } from "./PaymentComponents";
 import { BillHistory, BillStats } from "./BillHistory";
 import {
@@ -258,67 +259,78 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
       {/* Create Bill View */}
       {currentView === "create" && (
         <div className="space-y-6">
-          {/* Header */}
-          <div className="text-center">
-            <div className="w-16 h-16 bg-[var(--app-accent)] rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl text-white">$</span>
+          {/* Hero Background Section */}
+          <div className="relative">
+            {/* Hero background */}
+            <div className="absolute inset-0 rounded-3xl overflow-hidden opacity-20">
+              <img 
+                src="/hero.png" 
+                alt="Share The Bill" 
+                className="w-full h-full object-cover filter blur-sm"
+              />
             </div>
-            <h1 className="text-2xl font-bold text-[var(--app-foreground)] mb-2">
-              Share The Bill
-            </h1>
-            <p className="text-[var(--app-foreground-muted)]">
-              Split receipts with friends using Farcaster & Base Pay
-            </p>
-          </div>
+            
+            {/* Content over hero background */}
+            <div className="relative z-10">
 
           {/* Step 1: Upload Receipt */}
           <div className="space-y-4">
             <BillUploader
               onReceiptUploaded={handleReceiptUploaded}
               isProcessing={uploadedReceipt?.isProcessing}
+              onAmountSelected={handleAmountChange}
             />
           </div>
 
           {/* Step 2: Bill Details */}
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Bill title (e.g., Dinner at Restaurant)"
-              value={billTitle}
-              onChange={(e) => setBillTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)]"
-            />
-
-            <div className="flex items-center space-x-2">
+          <div className="glass-effect rounded-2xl p-6 space-y-4">
+            <h3 className="font-semibold text-[var(--app-foreground)] mb-4">📋 Bill Details</h3>
+            
+            <div className="space-y-4">
               <input
-                type="number"
-                placeholder="Total amount"
-                value={totalAmount || ""}
-                onChange={(e) =>
-                  handleAmountChange(parseFloat(e.target.value) || 0)
-                }
-                step="0.01"
-                min="0"
-                className="flex-1 px-3 py-2 bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--app-accent)]"
+                type="text"
+                placeholder="Bill title (e.g., Dinner at Restaurant)"
+                value={billTitle}
+                onChange={(e) => setBillTitle(e.target.value)}
+                className="w-full px-4 py-3 bg-white/50 border border-white/20 rounded-xl text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] focus:bg-white/70 transition-all backdrop-blur-sm"
               />
-              <span className="text-[var(--app-foreground-muted)]">USDC</span>
+
+              <div className="flex items-center space-x-3">
+                <div className="flex-1 relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--app-foreground-muted)]">$</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={totalAmount || ""}
+                    onChange={(e) =>
+                      handleAmountChange(parseFloat(e.target.value) || 0)
+                    }
+                    step="0.01"
+                    min="0"
+                    className="w-full pl-8 pr-4 py-3 bg-white/50 border border-white/20 rounded-xl text-[var(--app-foreground)] placeholder-[var(--app-foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] focus:bg-white/70 transition-all backdrop-blur-sm"
+                  />
+                </div>
+                <div className="px-3 py-3 bg-[var(--app-accent)]/10 rounded-xl border border-[var(--app-accent)]/20">
+                  <span className="text-[var(--app-accent)] font-medium">USDC</span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Step 3: Select Friends */}
-          <div className="space-y-4">
-            <div className="bg-[var(--app-card-bg)] border border-[var(--app-card-border)] rounded-lg p-4">
-              <FriendSelector
-                selectedFriends={selectedFriends}
-                onFriendsSelected={setSelectedFriends}
-                currentUserFid={userFid}
-              />
-            </div>
+          <div className="glass-effect rounded-2xl p-6">
+            <h3 className="font-semibold text-[var(--app-foreground)] mb-4">👥 Split with Friends</h3>
+            <FriendSelector
+              selectedFriends={selectedFriends}
+              onFriendsSelected={setSelectedFriends}
+              currentUserFid={userFid}
+            />
           </div>
 
           {/* Step 4: Split Configuration */}
           {selectedFriends.length > 0 && totalAmount > 0 && (
-            <div className="space-y-4">
+            <div className="glass-effect rounded-2xl p-6">
+              <h3 className="font-semibold text-[var(--app-foreground)] mb-4">⚖️ Split Configuration</h3>
               <BillSplitter
                 totalAmount={totalAmount}
                 participants={[
@@ -338,15 +350,38 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
             </div>
           )}
 
-          {/* Create Button */}
-          <Button
-            variant="primary"
-            onClick={createBill}
-            disabled={!canCreateBill || isCreating}
-            className="w-full h-12"
-          >
-            {isCreating ? "Creating Bill..." : "Create Bill"}
-          </Button>
+          {/* Create Button with Hero Background */}
+          <div className="pt-4">
+            <div className="relative">
+              {/* Hero background in button */}
+              <div className="absolute inset-0 rounded-2xl overflow-hidden opacity-10">
+                <img 
+                  src="/hero.png" 
+                  alt="" 
+                  className="w-full h-full object-cover filter blur-md"
+                />
+              </div>
+              
+              <Button
+                variant="primary"
+                onClick={createBill}
+                disabled={!canCreateBill || isCreating}
+                className="relative z-10 w-full h-14 bg-gradient-to-r from-[var(--app-accent)] to-blue-600 hover:from-blue-600 hover:to-[var(--app-accent)] text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreating ? (
+                  <div className="flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                    Creating Bill...
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <span className="mr-2">🚀</span>
+                    Create Bill
+                  </div>
+                )}
+              </Button>
+            </div>
+          </div>
 
           {/* Navigation to other views */}
           <div className="flex space-x-2 pt-4">
@@ -357,6 +392,8 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
             >
               View History
             </Button>
+          </div>
+            </div>
           </div>
         </div>
       )}

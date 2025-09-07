@@ -2,9 +2,37 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export function Navbar() {
   const pathname = usePathname();
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+  useEffect(() => {
+    // Check if camera is open by looking for camera overlay
+    const checkCameraState = () => {
+      const cameraElement = document.querySelector('[data-camera-open="true"]');
+      setIsCameraOpen(!!cameraElement);
+    };
+
+    // Check immediately
+    checkCameraState();
+
+    // Set up observer to watch for camera changes
+    const observer = new MutationObserver(checkCameraState);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-camera-open']
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  if (isCameraOpen) {
+    return null; // Hide navbar when camera is open
+  }
 
   return (
     <nav className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 ">

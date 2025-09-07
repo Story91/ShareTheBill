@@ -73,6 +73,8 @@ export function View() {
 
   return (
     <div className="flex flex-col min-h-screen font-sans text-[var(--app-foreground)] mini-app-theme from-[var(--app-background)] to-[var(--app-gray)] pb-20">
+      {/* Blurred logo background */}
+      <div className="app-background-logo"></div>
       <div className="w-full max-w-md mx-auto px-4 py-3">
         <header className="flex justify-between items-center mb-3 h-11">
           <div>

@@ -61,7 +61,10 @@ export function SimpleCamera({ onCapture, onClose }: SimpleCameraProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-[60] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black z-[60] flex flex-col" 
+      data-camera-open="true"
+    >
       <div className="flex-1 flex items-center justify-center">
         <video
           ref={videoRef}
@@ -72,24 +75,26 @@ export function SimpleCamera({ onCapture, onClose }: SimpleCameraProps) {
         />
       </div>
 
-      <div className="p-4 flex gap-4">
+      <div className="p-6 flex justify-center gap-8">
         <button
           onClick={startCamera}
-          className="flex-1 bg-blue-500 text-white py-3 rounded"
+          className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm border border-green-400/20 flex items-center justify-center hover:scale-110"
         >
-          Start Camera
+          <span className="text-2xl">🔘</span>
         </button>
         <button
           onClick={takePhoto}
-          className="flex-1 bg-green-500 text-white py-3 rounded"
+          className="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm border border-blue-400/20 flex items-center justify-center hover:scale-110"
         >
-          Take Photo
+          <div className="flex items-center justify-center -mt-2">
+            <span className="text-3xl">📸</span>
+          </div>
         </button>
         <button
           onClick={onClose}
-          className="flex-1 bg-red-500 text-white py-3 rounded"
+          className="w-16 h-16 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm border border-red-400/20 flex items-center justify-center hover:scale-110"
         >
-          Close
+          <span className="text-2xl">✕</span>
         </button>
       </div>
 
