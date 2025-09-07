@@ -49,7 +49,7 @@ export function PaymentFlow({
       const payment: BasePayPayment = await pay({
         amount: participant.amountOwed.toString(),
         to: bill.creatorWalletAddress, // Payment goes to bill creator
-        testnet: true, // Set to false for mainnet
+        testnet: false, // Using mainnet Base
       });
 
       console.log(`Payment initiated! Transaction ID: ${payment.id}`);
@@ -59,7 +59,7 @@ export function PaymentFlow({
         try {
           const status = await getPaymentStatus({ 
             id: payment.id,
-            testnet: true // Must match testnet setting from pay()
+            testnet: false // Must match testnet setting from pay()
           });
 
           if (status.status === 'completed') {
