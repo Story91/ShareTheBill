@@ -98,13 +98,22 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Validate total amounts match
+    // Auto-adjust amounts to match total (handle rounding differences)
     const totalSplit = processedParticipants.reduce((sum, p) => sum + p.amountOwed, 0);
-    const difference = Math.abs(totalSplit - totalAmount);
+    const difference = totalAmount - totalSplit;
     
-    if (difference > 0.01) { // Allow for small rounding errors
+    // If there's a small difference, adjust the first participant (creator)
+    if (Math.abs(difference) > 0.001) {
+      processedParticipants[0].amountOwed = Math.round((processedParticipants[0].amountOwed + difference) * 100) / 100;
+    }
+    
+    // Final validation - should now match exactly
+    const finalTotalSplit = processedParticipants.reduce((sum, p) => sum + p.amountOwed, 0);
+    const finalDifference = Math.abs(finalTotalSplit - totalAmount);
+    
+    if (finalDifference > 0.01) {
       return NextResponse.json(
-        { error: `Split amounts (${totalSplit}) don't match total amount (${totalAmount})` },
+        { error: `Unable to balance split amounts. Please check your configuration.` },
         { status: 400 }
       );
     }

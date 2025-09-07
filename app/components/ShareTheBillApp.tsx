@@ -6,6 +6,7 @@ import { BillUploader, BillSplitter, FriendSelector } from "./BillComponents";
 import { AdvancedOCR } from "./AdvancedOCR";
 import { PaymentFlow, BillStatus } from "./PaymentComponents";
 import { BillHistory, BillStats } from "./BillHistory";
+import { useToast, ToastContainer } from "./Toast";
 import {
   UploadedReceipt,
   FarcasterFriend,
@@ -22,6 +23,7 @@ interface ShareTheBillAppProps {
 }
 
 export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
+  const { toasts, showSuccess, showError, showWarning, removeToast } = useToast();
   const [currentView, setCurrentView] = useState<AppView>("create"); // Start with create view
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
@@ -72,7 +74,7 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
   // Create bill
   const createBill = useCallback(async () => {
     if (!billTitle || totalAmount <= 0 || selectedFriends.length === 0) {
-      alert("Please fill in all required fields");
+      showWarning("Please fill in all required fields");
       return;
     }
 
@@ -129,17 +131,17 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
 
       if (response.ok) {
         const result = await response.json();
-        alert("Bill created successfully!");
+        showSuccess("Bill created successfully!");
         resetCreateBillState();
         setSelectedBill(result.bill);
         setCurrentView("bill");
       } else {
         const error = await response.json();
-        alert(`Failed to create bill: ${error.error}`);
+        showError(`Failed to create bill: ${error.error}`);
       }
     } catch (error) {
       console.error("Error creating bill:", error);
-      alert("Failed to create bill. Please try again.");
+      showError("Failed to create bill. Please try again.");
     } finally {
       setIsCreating(false);
     }
@@ -164,11 +166,11 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
   const handlePaymentComplete = useCallback((result: PaymentResult) => {
     if (result.success) {
       // Refresh bill data or show success message
-      alert("Payment completed successfully!");
+      showSuccess("Payment completed successfully!");
     } else {
-      alert(`Payment failed: ${result.error}`);
+      showError(`Payment failed: ${result.error}`);
     }
-  }, []);
+  }, [showSuccess, showError]);
 
   // Navigation
   const navigateToView = useCallback(
@@ -346,6 +348,7 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
                 ]}
                 splitConfig={splitConfig}
                 onSplitConfigChange={setSplitConfig}
+                showWarning={showWarning}
               />
             </div>
           )}
@@ -423,6 +426,9 @@ export function ShareTheBillApp({ userFid = 12345 }: ShareTheBillAppProps) {
           )}
         </div>
       )}
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         result = await processWithGoogleVision(imageBuffer);
         console.log("✅ Google Vision OCR successful");
       } catch (error) {
-        console.log("❌ Google Vision failed:", error.message);
+        console.log("❌ Google Vision failed:", error instanceof Error ? error.message : String(error));
       }
     } else {
       console.log("⏭️ Google Vision API not configured, skipping...");
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         result = await processWithOptimizedTesseract(imageBuffer);
         console.log("✅ Optimized Tesseract OCR successful");
       } catch (error) {
-        console.log("❌ Tesseract failed:", error.message);
+        console.log("❌ Tesseract failed:", error instanceof Error ? error.message : String(error));
       }
     } else if (!result) {
       console.log("⏭️ Tesseract.js not available, skipping...");

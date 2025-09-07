@@ -572,6 +572,7 @@ interface BillSplitterProps {
   participants: FarcasterFriend[];
   splitConfig: SplitConfiguration;
   onSplitConfigChange: (config: SplitConfiguration) => void;
+  showWarning?: (message: string) => void;
 }
 
 export function BillSplitter({
@@ -579,26 +580,29 @@ export function BillSplitter({
   participants,
   splitConfig,
   onSplitConfigChange,
+  showWarning,
 }: BillSplitterProps) {
   // Auto-update equal split when participants or totalAmount changes
   useEffect(() => {
     if (splitConfig.type === "equal" && participants.length > 0) {
-      const expectedAmountPerPerson = totalAmount / participants.length;
-
+      const baseAmountPerPerson = Math.floor((totalAmount * 100) / participants.length) / 100; // Round down to cents
+      const remainder = totalAmount - (baseAmountPerPerson * participants.length);
+      
       // Only update if the current config doesn't match expected values
       const needsUpdate =
         splitConfig.participants.length !== participants.length ||
         splitConfig.participants.some((p) => {
           const participant = participants.find((part) => part.fid === p.fid);
-          return !participant || (p.amount ?? 0) !== expectedAmountPerPerson;
+          return !participant;
         });
 
       if (needsUpdate) {
         const newConfig: SplitConfiguration = {
           type: "equal",
-          participants: participants.map((p) => ({
+          participants: participants.map((p, index) => ({
             fid: p.fid,
-            amount: expectedAmountPerPerson,
+            // First participant (creator) gets the remainder to make sum exact
+            amount: index === 0 ? baseAmountPerPerson + remainder : baseAmountPerPerson,
           })),
         };
         onSplitConfigChange(newConfig);
@@ -616,15 +620,18 @@ export function BillSplitter({
     (type: "equal" | "custom" | "percentage") => {
       const newConfig: SplitConfiguration = {
         type,
-        participants: participants.map((p) => {
+        participants: participants.map((p, index) => {
           const existingConfig = splitConfig.participants.find(
             (sp) => sp.fid === p.fid,
           );
 
           if (type === "equal") {
+            const baseAmountPerPerson = Math.floor((totalAmount * 100) / participants.length) / 100;
+            const remainder = totalAmount - (baseAmountPerPerson * participants.length);
             return {
               fid: p.fid,
-              amount: totalAmount / participants.length,
+              // First participant (creator) gets the remainder to make sum exact
+              amount: index === 0 ? baseAmountPerPerson + remainder : baseAmountPerPerson,
             };
           } else if (type === "custom") {
             return {
@@ -685,6 +692,22 @@ export function BillSplitter({
     splitConfig.type === "percentage"
       ? Math.abs(totalCalculated - 100) < 0.01
       : Math.abs(totalCalculated - totalAmount) < 0.01;
+
+  // Show warning toast only for significant differences (for custom/percentage modes)
+  useEffect(() => {
+    if (splitConfig.participants.length > 0 && showWarning && splitConfig.type !== "equal") {
+      const difference = Math.abs(totalCalculated - (splitConfig.type === "percentage" ? 100 : totalAmount));
+      
+      if (difference > 0.01) {
+        // Only show warning for custom/percentage modes where user controls the amounts
+        if (splitConfig.type === "percentage") {
+          showWarning(`Percentages add up to ${totalCalculated.toFixed(1)}% instead of 100%`);
+        } else {
+          showWarning(`Amounts add up to $${totalCalculated.toFixed(2)} instead of $${totalAmount.toFixed(2)}`);
+        }
+      }
+    }
+  }, [totalCalculated, totalAmount, splitConfig, showWarning]);
 
   return (
     <div className="space-y-4">
